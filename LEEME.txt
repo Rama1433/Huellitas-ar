@@ -1,28 +1,16 @@
-HUELLITAS V5.2 – CONEXIÓN REAL A SUPABASE
-=======================================
+HUELLITAS V5.3 — PROYECTO COMPLETO PARA GITHUB
 
-ESTADO:
-- V5.1 conservada: diseño, carrusel, sonidos, logo y corrección del zoom iPhone.
-- Registro/inicio de sesión/recuperación con Supabase Auth.
-- Publicar con foto; queda pendiente hasta aprobación del moderador.
-- Listado público: solo mascotas reales con estado aprobado y activo.
-- Fotos en bucket privado, enlaces temporales; contactos privados.
-- Solicitudes privadas y panel de revisión (solo cuentas autorizadas).
-- Al no haber mascotas reales, el banner usa IMÁGENES ILUSTRATIVAS y la lista pública está vacía.
+Cambios frente a V5.2:
+- Los mismos audios originales: cat.mp3 y URL del ladrido anterior. Web Audio en lugar de HTMLAudioElement para evitar la tarjeta multimedia del iPhone. La reproducción real en iOS debe verificarse en el equipo.
+- El dueño ve Administrar mi publicación y no puede mandarse solicitudes.
+- Mis publicaciones: edición, ver solicitudes, resolver y eliminar (con fotos).
+- Compartir: texto personalizado para WhatsApp, enlace individual con ?mascota=ID, flyer vertical PNG para Instagram y compartir nativo.
+- QR del flyer: qr-local.js incluido en el proyecto, funciona sin CDN y contiene solo el enlace público individual.
+- El enlace individual abre la ficha en la misma SPA; los previews de redes serán genéricos hasta implementar metadatos por publicación en backend.
+- Conserva diseño, PWA, iconos, autenticación y RLS en Supabase.
 
-ANTES DE PROBAR EL REGISTRO:
-1) Abrí: https://supabase.com/dashboard/project/sslvugeciizwhcldgiwg/auth/url-configuration
-2) Site URL: https://huellitas-ar.vercel.app
-3) Redirect URLs: https://huellitas-ar.vercel.app/**
-4) En Authentication > Providers > Email, comprobá que esté habilitada la confirmación de email.
-5) Publicá en Vercel: extraé este ZIP y subí TODOS los archivos a la raíz de GitHub, no el ZIP.
+PUBLICACIÓN: descomprimir el ZIP y subir todos los archivos sueltos a la raíz del repositorio GitHub conectado a Vercel. No subas solo el ZIP.
 
-IMPORTANTE:
-- Proyecto Supabase: sslvugeciizwhcldgiwg (Huellitas).
-- Proyecto Entrenar NO se modificó.
-- La clave en app.js es PUBLISHABLE pública; NUNCA incluir service_role/secret.
-- Aún falta crear tu cuenta y darle rol de moderador en Supabase antes de aprobar avisos.
-- No hay datos ficticios insertados en la base.
-- El servicio de correo predeterminado de Supabase SOLO envía confirmaciones a miembros del equipo de tu organización (máx. 2 emails/hora aprox). Antes de abrir registro público configurar SMTP o Send Email Hook.
-- La recuperación de contraseña requiere que las URLs de Auth estén configuradas.
-- Corrección zoom en iPhone: todos los input/select/textarea tienen font-size >=16px en móvil.
+SUPABASE: se aplicó una migración segura en Huellitas que permite resolver publicaciones destacadas sin errores y borrar fotos propias. No se modificó Entrenar.
+
+PRUEBAS PENDIENTES EN IPHONE: tocar una mascota, volver a pantalla bloqueada, corroborar que no aparece el reproductor de Huellitas; probar el audio real, compartir imagen, solicitar contacto desde otra cuenta.

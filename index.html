@@ -2,7 +2,7 @@
 <html lang="es-AR"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#174b39"><meta name="description" content="Huellitas: una comunidad para encontrar hogares y reencontrar mascotas en San Miguel y alrededores.">
-<title>Huellitas | Demo V5</title>
+<title>Huellitas | Mascotas en adopción y perdidas</title>
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <link rel="shortcut icon" href="/favicon.ico">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
@@ -10,6 +10,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Huellitas">
+<meta property="og:title" content="Huellitas — Encontrá, adoptá y ayudá">
+<meta property="og:description" content="Adoptá, encontrá a tu compañero perdido o ayudá a que alguien vuelva a casa.">
+<meta property="og:image" content="https://huellitas-ar.vercel.app/icon-512.png">
+<meta property="og:type" content="website">
 
 <style>
 :root{--forest:#174b39;--forest-2:#245d47;--mint:#eaf4e9;--gold:#f4d79b;--ivory:#fbfaf6;--paper:#fff;--text:#244333;--muted:#718277;--line:#e5ebe3;--shadow:0 16px 42px rgba(20,61,40,.09);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color-scheme:light}
@@ -99,6 +103,11 @@
     font-size: 16px !important;
   }
 }
+
+/* V5.3 - compartir sin alterar el diseño principal */
+.share-actions{display:grid;gap:7px;margin-top:14px}.share-actions .menu-btn{margin:0}
+.detail-actions button:not(.share){min-width:0}
+@media(max-width:620px){.share-actions{gap:9px}}
 </style></head><body>
 <svg style="display:none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <symbol id="i-paw" viewBox="0 0 24 24"><ellipse cx="12" cy="16.6" rx="6.1" ry="4.1"/><ellipse cx="5" cy="9.8" rx="1.6" ry="2.3" transform="rotate(-15 5 9.8)"/><ellipse cx="9.2" cy="6.5" rx="1.5" ry="2.3" transform="rotate(-8 9.2 6.5)"/><ellipse cx="14.8" cy="6.5" rx="1.5" ry="2.3" transform="rotate(8 14.8 6.5)"/><ellipse cx="19" cy="9.8" rx="1.6" ry="2.3" transform="rotate(15 19 9.8)"/></symbol>
@@ -140,4 +149,5 @@
 <footer class="footer"><span>© Huellitas · San Miguel, Buenos Aires · Comunidad en construcción</span><span>Adoptá, encontrá y ayudá a reunir familias</span></footer>
 </div><div id="overlay" class="overlay"><div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="Detalle de publicación"></div></div><div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js"></script>
+<script src="./qr-local.js"></script>
 <script src="./app.js"></script></body></html>
