@@ -88,6 +88,17 @@
 .form-content .form-subtitle{color:#658270;font-size:12px;line-height:1.55}
 @media(max-width:620px){.private-gate{padding:12px}.form-content .request-summary{margin:12px 0}.request-item{padding:12px}}
 
+
+/* HUELLITAS V5.1 — Evitar zoom automático al enfocar campos en Safari/iOS.
+   Los controles de entrada usan al menos 16px en celulares/tablets táctiles.
+   No bloqueamos el zoom manual (accesibilidad). */
+@media (pointer: coarse), (max-width: 768px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
 </style></head><body>
 <svg style="display:none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <symbol id="i-paw" viewBox="0 0 24 24"><ellipse cx="12" cy="16.6" rx="6.1" ry="4.1"/><ellipse cx="5" cy="9.8" rx="1.6" ry="2.3" transform="rotate(-15 5 9.8)"/><ellipse cx="9.2" cy="6.5" rx="1.5" ry="2.3" transform="rotate(-8 9.2 6.5)"/><ellipse cx="14.8" cy="6.5" rx="1.5" ry="2.3" transform="rotate(8 14.8 6.5)"/><ellipse cx="19" cy="9.8" rx="1.6" ry="2.3" transform="rotate(15 19 9.8)"/></symbol>

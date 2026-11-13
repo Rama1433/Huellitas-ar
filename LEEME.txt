@@ -24,3 +24,7 @@ el ícono anterior en caché.
 
 NOTA: La V5 sigue siendo una demo. Login, solicitudes, moderación
 no están conectados a Supabase. El ZIP no convierte la demo en producción.
+
+Actualización V5.1: todos los campos de escritura y selectores en iPhone/iPad
+y móviles usan tipografía de 16px para prevenir el zoom automático
+de Safari al tocar un campo, sin deshabilitar el zoom manual.
