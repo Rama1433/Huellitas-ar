@@ -1,0 +1,26 @@
+HUELLITAS – ÍCONO ORIGINAL DE LA APP
+
+Este ZIP usa el mismo SVG i-paw y los mismos colores que ya tiene Huellitas:
+verde #174b39 / dorado #f5d18c.
+
+PARA SUBIR TODA LA APP A VERCEL DESDE GITHUB:
+1. Abrí la raíz del repositorio donde tenés el index.html actual.
+2. Reemplazá index.html por el de este ZIP.
+3. Subí junto a él: apple-touch-icon.png, icon-192.png, icon-512.png,
+   icon-maskable-512.png, favicon.png, favicon.ico y manifest.webmanifest.
+4. En un proyecto estático (index.html directamente en la raíz del repo),
+   estos archivos van EN LA RAÍZ, no dentro de /public.
+5. Vercel publicará la nueva versión al actualizar la rama conectada.
+
+SI TU PROYECTO UTILIZA CARPETA /public (Vite/React):
+Copiá los iconos y manifest.webmanifest a /public y agregá las líneas
+<link> del <head> del index.html proporcionado al <head> de tu app.
+No reemplaces la app React con este HTML estático.
+
+EN IPHONE:
+Borrá primero el acceso directo viejo, abrí la URL en Safari,
+Compartir > Añadir a pantalla de inicio. iOS a menudo mantiene
+el ícono anterior en caché.
+
+NOTA: La V5 sigue siendo una demo. Login, solicitudes, moderación
+no están conectados a Supabase. El ZIP no convierte la demo en producción.
