@@ -7,6 +7,7 @@
 <link rel="shortcut icon" href="/favicon.ico">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Huellitas">
@@ -108,6 +109,50 @@
 .share-actions{display:grid;gap:7px;margin-top:14px}.share-actions .menu-btn{margin:0}
 .detail-actions button:not(.share){min-width:0}
 @media(max-width:620px){.share-actions{gap:9px}}
+
+/* Huellitas V5.4: minimal notifications, multi-photo stories and approximate map */
+.sr-file-input{position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;opacity:0!important}
+.file-picker{display:inline-flex;align-items:center;gap:8px;padding:12px 16px;color:#255b40!important;font-size:12px;font-weight:850;border-radius:11px;border:1px solid #d3e6d6;background:#eff7ef;margin:7px 0 4px;cursor:pointer}
+.file-picker svg{font-size:18px}
+.sr-file-input:focus-visible+.file-picker{outline:3px solid #c89c42;outline-offset:3px}
+
+[hidden]{display:none!important}
+.notif-btn{position:relative;width:42px;height:42px;border-radius:13px;border:1px solid #dce8df;color:#245c42;background:#fff;display:grid;place-items:center;flex-shrink:0}
+.notif-btn svg{font-size:20px}
+.notif-badge{position:absolute;top:-5px;right:-5px;border-radius:999px;background:#d36e42;color:#fff;border:2px solid #fff;min-width:20px;height:20px;padding:1px 4px;font-size:10px;font-weight:900;display:grid;place-items:center;font-variant-numeric:tabular-nums}
+.pill-count{margin-left:auto;padding:2px 7px;border-radius:20px;background:#e9bc64;color:#143b28;font-size:11px}
+.form-error{display:block;padding:11px 12px;margin:13px 0;border:1px solid #eac4b6;border-radius:11px;background:#fff4ef;color:#94462e;font-size:12px;font-weight:700;line-height:1.45}
+.center-success{text-align:center}.center-success>svg{font-size:34px;color:#2c7852;margin-bottom:10px}
+.center-success p{font-size:13px;line-height:1.65;color:#637c6e}
+.loading-mini{display:inline-block;width:14px;height:14px;border:2px solid #ffffff6a;border-top-color:#fff;border-radius:50%;vertical-align:-2px;animation:spin .75s linear infinite;margin-right:5px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.selected-photo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}
+.selected-photo-grid>div{min-width:0}.selected-photo{height:90px;border:1px solid #dbe8de;border-radius:11px;background:#eff4ee;display:grid;place-items:center;position:relative;overflow:hidden;color:#799f84}
+.selected-photo.cover{outline:2px solid #d5b475}.selected-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.selected-photo-grid small{display:block;color:#557760;font-size:9px;font-weight:900;letter-spacing:.5px;margin:6px 0 3px}.file-name{display:block;font-size:10px;color:#77877c;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.photo-gallery-tools{position:absolute;z-index:3;top:50%;width:100%;left:0;display:flex;align-items:center;justify-content:space-between;pointer-events:none;padding:0 9px;transform:translateY(-50%)}
+.photo-gallery-tools span{border-radius:20px;color:white;background:#082e1bb3;font-size:11px;padding:5px 9px;font-weight:800}
+.gallery-arrow{pointer-events:auto;border:0;background:#fffef0eb;color:#28533f;font-size:28px;line-height:1;width:34px;height:36px;border-radius:50%;display:grid;place-items:center}
+.photo-thumbs{display:flex;gap:7px;justify-content:center;background:#f8fbf7;padding:10px 8px;border-bottom:1px solid #e4eae5}
+.photo-thumbs button{padding:0;border:2px solid transparent;border-radius:10px;background:none;width:53px;height:50px;overflow:hidden}.photo-thumbs button.selected{border-color:#d2a967}
+.photo-thumbs img{width:100%;height:100%;object-fit:cover}
+.mod-photo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:12px 0}.mod-photo-grid img{width:100%;height:120px;border-radius:9px;object-fit:cover}.mod-photo-grid small{display:block;font-size:10px;color:#738977}
+.notification-item{display:flex;align-items:center;gap:11px;background:#f0f6ee;border:1px solid #dce8dc;border-radius:12px;text-align:left;padding:13px;width:100%;color:#2b5d40}
+.notification-item.read{background:#fff;color:#607768}.notification-item svg{margin-left:auto;font-size:17px}.notification-item b{display:block;font-size:12px;font-weight:850}.notification-item small{display:block;color:#8b9689;font-size:10px;margin-top:4px}.notif-dot{width:8px;height:8px;flex-shrink:0;background:#d6a652;border-radius:50%}.notification-item.read .notif-dot{background:transparent}
+.request-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.state-pill{font-size:10px;font-weight:800;padding:5px 8px;border-radius:99px;background:#f1e9d7;color:#946d35;white-space:nowrap}
+.state-pill.accepted{background:#e3f2e8;color:#36704d}.state-pill.declined{background:#fbe8e3;color:#9b5948}
+.request-response{background:#edf6ef;border:1px solid #d6e9d9;border-radius:12px;padding:12px;margin:12px 0;color:#305c44;font-size:12px;line-height:1.5}
+.request-response p{color:#406d52}.soft-action{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 12px;background:#f4faf4;color:#2f6546;border:1px solid #d5e5d8;border-radius:10px;font-weight:800;font-size:12px;cursor:pointer}
+.soft-action svg{font-size:15px}.text-action{background:none;border:0;text-decoration:underline;color:#397956;font-size:11px;font-weight:650;padding:3px}
+.contact-link{display:inline-flex;align-items:center;gap:5px;color:#176944!important;text-decoration:underline;font-size:12px;font-weight:800}
+.share-consent{display:flex;align-items:flex-start;gap:11px;margin:20px 0;background:#f3f8f1;border:1px solid #dce9db;border-radius:11px;padding:13px;color:#3b6248;font-size:12px;line-height:1.6}
+.share-consent input{flex-shrink:0;width:19px!important;height:19px!important;margin:1px 0 0!important}
+.proof-text{font-style:italic;border-left:3px solid #d7bc84;padding-left:8px}
+.map-section{margin:15px 0}.pet-map{height:245px;width:100%;margin:12px 0;border-radius:13px;border:1px solid #e3eae3;overflow:hidden;position:relative;z-index:0;background:#e8f0e8}
+.pet-map .leaflet-container{font-family:inherit}.map-note{color:#708574;font-size:11px;line-height:1.5;padding:5px 0 0}
+.map-fallback{margin:0;padding:25px 15px;font-size:12px;color:#507457}.overview-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:11px;margin:6px 0 12px}.overview-toolbar span{font-size:11px;color:#78917b}
+.overview-map-section{padding:13px;background:#f1f7ee;border:1px solid #e0ebe0;border-radius:15px;margin:8px 0 17px}.overview-map-section .pet-map{height:300px;margin:0 0 6px}.overview-map-section small{font-size:10px;color:#768c7b}
+@media(max-width:620px){.top-actions{gap:5px}.notif-btn{width:39px;height:39px}.pet-map{height:225px}.overview-map-section .pet-map{height:260px}.mod-photo-grid img{height:100px}.photo-thumbs button{width:46px;height:44px}.selected-photo{height:75px}.overview-toolbar span{font-size:10px}.photo-gallery-tools{padding:0 6px}}
 </style></head><body>
 <svg style="display:none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <symbol id="i-paw" viewBox="0 0 24 24"><ellipse cx="12" cy="16.6" rx="6.1" ry="4.1"/><ellipse cx="5" cy="9.8" rx="1.6" ry="2.3" transform="rotate(-15 5 9.8)"/><ellipse cx="9.2" cy="6.5" rx="1.5" ry="2.3" transform="rotate(-8 9.2 6.5)"/><ellipse cx="14.8" cy="6.5" rx="1.5" ry="2.3" transform="rotate(8 14.8 6.5)"/><ellipse cx="19" cy="9.8" rx="1.6" ry="2.3" transform="rotate(15 19 9.8)"/></symbol>
@@ -126,10 +171,12 @@
 <symbol id="i-cat" viewBox="0 0 24 24"><path d="m3 10 1-7 6 4a10 10 0 0 1 4 0l6-4 1 7v6a9 9 0 0 1-18 0v-6Z"/><path d="M8 14h.01M16 14h.01M11 17l1 1 1-1M2 16l4 1M22 16l-4 1"/></symbol>
 <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
 <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 7h4l2-2h4l2 2h4v13H4V7Z"/><circle cx="12" cy="13" r="3.2"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 8-3 8-3 10h18c0-2-3-2-3-10M10 22a2.2 2.2 0 0 0 4 0"/></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24"><path d="M6 2h4l2 5-3 2a16 16 0 0 0 6 6l2-3 5 2v4c0 2-2 4-4 4C9 21 3 14 2 6c0-2 2-4 4-4Z"/></symbol>
 <symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></symbol>
 </svg>
 <div class="app" id="app">
-<header class="topbar"><a class="brand" href="#inicio" aria-label="Huellitas, inicio"><span class="brandmark"><svg><use href="#i-paw"/></svg></span><span><span class="brandname">Huellitas<span>.</span></span><span class="brandtag">CONECTAMOS HISTORIAS</span></span></a><nav class="topnav"><button data-action="explore">Explorar mascotas</button><button data-action="publish">Publicar</button></nav><div class="top-actions"><button class="login" data-action="login" id="account-button"><svg><use href="#i-user"/></svg><span>Ingresar / Registrarme</span></button></div></header>
+<header class="topbar"><a class="brand" href="#inicio" aria-label="Huellitas, inicio"><span class="brandmark"><svg><use href="#i-paw"/></svg></span><span><span class="brandname">Huellitas<span>.</span></span><span class="brandtag">CONECTAMOS HISTORIAS</span></span></a><nav class="topnav"><button data-action="explore">Explorar mascotas</button><button data-action="publish">Publicar</button></nav><div class="top-actions"><button id="notification-button" data-action="notifications" class="notif-btn" hidden aria-label="Notificaciones"><svg><use href="#i-bell"/></svg><span id="bell-count" class="notif-badge" hidden>0</span></button><button class="login" data-action="login" id="account-button"><svg><use href="#i-user"/></svg><span>Ingresar / Registrarme</span></button></div></header>
 <section class="hero" id="inicio"><div class="hero-text"><span class="eyebrow"><svg><use href="#i-pin"/></svg> San Miguel y alrededores</span><h1>Cada huellita<br>tiene <em>una historia.</em><br>Ayudanos a cuidarla.</h1><p>Adoptá, encontrá a tu compañero perdido o ayudá a que alguien vuelva a casa.</p><div class="hero-actions"><button class="primary" data-action="publish"><svg><use href="#i-plus"/></svg> Publicar mascota</button><button class="secondary" data-action="explore">Conocer mascotas <svg><use href="#i-arrow"/></svg></button></div></div><div class="hero-visual">
  <div class="hero-carousel" id="hero-carousel" aria-label="Mascotas destacadas aprobadas">
    <button type="button" class="hero-frame" id="hero-photo" data-action="hero-open" aria-label="Conocer a la mascota destacada">
@@ -143,11 +190,12 @@
 <div class="underhero"><div class="community"><span class="round-icon"><svg><use href="#i-heart"/></svg></span> Explorar es gratis. Contactar requiere cuenta.</div><button class="sound-control" id="sound-btn" data-action="toggle-sound" aria-pressed="true"><svg><use href="#i-volume"/></svg><span>Sonidos activados</span></button></div>
 <main class="main" id="mascotas"><div class="section-head"><div><div class="section-label">CONOCÉ A NUESTRA COMUNIDAD</div><h2>Historias que importan</h2></div><span class="demo-pill">PUBLICACIONES APROBADAS</span></div>
 <div class="filters"><div class="tabs" role="group" aria-label="Filtrar publicaciones"><button class="tab active" data-filter="all" aria-pressed="true">Todas</button><button class="tab" data-filter="adoption"><svg><use href="#i-heart"/></svg> Adopción</button><button class="tab" data-filter="lost"><svg><use href="#i-search"/></svg> Perdidos</button><button class="tab" data-filter="found"><svg><use href="#i-paw"/></svg> Encontrados</button></div><div class="searchbar"><div class="search-wrap"><svg><use href="#i-search"/></svg><input id="search" type="search" aria-label="Buscar mascotas" placeholder="Buscar mascota..." autocomplete="off"></div><select id="zone" class="zone" aria-label="Elegir localidad"><option value="">Todas las zonas</option><option>San Miguel</option><option>Muñiz</option><option>Bella Vista</option><option>José C. Paz</option><option>Los Polvorines</option><option>Grand Bourg</option></select></div></div>
-<p class="helper"><svg><use href="#i-volume"/></svg> Tocá una foto: vas a escuchar su voz, ver la animación y abrir su historia automáticamente.</p>
+<div class="overview-toolbar"><button class="soft-action" id="overview-map-toggle" data-action="toggle-overview-map"><svg><use href="#i-pin"/></svg> Ver mapa de búsquedas</button><span>Solo zonas aproximadas de mascotas perdidas o encontradas.</span></div><div id="overview-map-section" class="overview-map-section" hidden><div id="overview-map" class="pet-map" aria-label="Zonas de búsqueda de mascotas"></div><small>Los círculos muestran zonas aproximadas, no ubicaciones exactas. © OpenStreetMap.</small></div><p class="helper"><svg><use href="#i-volume"/></svg> Tocá una foto: vas a escuchar su voz, ver la animación y abrir su historia automáticamente.</p>
 <div class="cards" id="cards" aria-live="polite"></div>
 <section class="safety"><div class="safety-left"><span class="safety-ico"><svg><use href="#i-shield"/></svg></span><div><b>Una comunidad cuidada, publicación por publicación</b><p>Todos pueden explorar. Para publicar hay que registrarse y cada aviso se revisa antes de mostrarse.</p></div></div><button data-action="publish">Publicar mascota <svg><use href="#i-arrow"/></svg></button></section></main>
 <footer class="footer"><span>© Huellitas · San Miguel, Buenos Aires · Comunidad en construcción</span><span>Adoptá, encontrá y ayudá a reunir familias</span></footer>
 </div><div id="overlay" class="overlay"><div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="Detalle de publicación"></div></div><div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js"></script>
 <script src="./qr-local.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
 <script src="./app.js"></script></body></html>

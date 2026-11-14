@@ -1,16 +1,52 @@
-HUELLITAS V5.3 — PROYECTO COMPLETO PARA GITHUB
+HUELLITAS V5.4 — PROYECTO COMPLETO PARA GITHUB / VERCEL
+===================================================
 
-Cambios frente a V5.2:
-- Los mismos audios originales: cat.mp3 y URL del ladrido anterior. Web Audio en lugar de HTMLAudioElement para evitar la tarjeta multimedia del iPhone. La reproducción real en iOS debe verificarse en el equipo.
-- El dueño ve Administrar mi publicación y no puede mandarse solicitudes.
-- Mis publicaciones: edición, ver solicitudes, resolver y eliminar (con fotos).
-- Compartir: texto personalizado para WhatsApp, enlace individual con ?mascota=ID, flyer vertical PNG para Instagram y compartir nativo.
-- QR del flyer: qr-local.js incluido en el proyecto, funciona sin CDN y contiene solo el enlace público individual.
-- El enlace individual abre la ficha en la misma SPA; los previews de redes serán genéricos hasta implementar metadatos por publicación en backend.
-- Conserva diseño, PWA, iconos, autenticación y RLS en Supabase.
+Archivos de la app estática: index.html, app.js, qr-local.js, cat.mp3,
+iconos originales, favicon, manifest.webmanifest y logo-huellitas.svg.
 
-PUBLICACIÓN: descomprimir el ZIP y subir todos los archivos sueltos a la raíz del repositorio GitHub conectado a Vercel. No subas solo el ZIP.
+CÓMO PUBLICAR
+1. Descomprimí el ZIP.
+2. Subí TODOS los archivos directamente a la raíz de tu repositorio GitHub,
+   reemplazando los anteriores (NO subas el ZIP cerrado).
+3. Si Vercel está conectado a GitHub, desplegará el nuevo código.
+4. Abrí https://huellitas-ar.vercel.app/ y actualizá la página.
+5. En PWA iPhone, si quedan recursos viejos por caché, cerrá y volvé a abrir;
+   si sigue, quitá y volvé a crear el acceso directo.
 
-SUPABASE: se aplicó una migración segura en Huellitas que permite resolver publicaciones destacadas sin errores y borrar fotos propias. No se modificó Entrenar.
+QUÉ CAMBIÓ (V5.4)
+- Errores de inicio de sesión más claros, en el formulario.
+- Registro con número de celular/WhatsApp privado (10–15 dígitos).
+- "Mi contacto privado" para cuentas anteriores.
+- Hasta tres fotos por mascota; la primera es portada, ficha y banner si se
+  destaca la publicación. Aprobación exige revisión de todas las fotos.
+- Se pueden agregar fotos faltantes en "Editar publicación"; el aviso vuelve
+  a revisión y no se publica hasta que se apruebe.
+- Campanita: nueva solicitud y respuesta aceptada/rechazada. Consulta cada
+  ~25 segundos mientras la app está abierta, y al volver a enfocarla.
+  Las solicitudes antiguas no generan avisos retroactivos.
+- Contactos: la aceptación NO publica el teléfono por defecto. Quien acepta
+  puede marcar la casilla para compartir su WhatsApp SOLO con esa solicitud.
+  También se puede compartir/revocar posteriormente en el historial.
+- Mapa con círculos aproximados de 1/2/3/5 km para avisos de perdidos y
+  encontrados; nunca se solicita GPS. Coordenadas redondeadas a 2 decimales.
+  El mapa necesita Internet (Leaflet 1.9.4 y mosaicos de OpenStreetMap).
+- Vista de mapa global para comparar avisos de búsqueda publicados.
+- Sin cambiar ladrido, maullido, logo o estética principal.
 
-PRUEBAS PENDIENTES EN IPHONE: tocar una mascota, volver a pantalla bloqueada, corroborar que no aparece el reproductor de Huellitas; probar el audio real, compartir imagen, solicitar contacto desde otra cuenta.
+BASE DE DATOS
+El proyecto Supabase exclusivo de Huellitas ya recibió las migraciones
+correspondientes a fotos, ubicaciones aproximadas, contactos autorizados,
+notificaciones, moderación y RLS. No tenés que ejecutar un SQL adicional.
+Las publicaciones y solicitudes anteriores se conservaron.
+
+PRIVACIDAD Y PRUEBAS
+- Las fotos nuevas y los avisos permanecen privados hasta aprobación.
+- Los contactos NO son públicos. El número no se revela al aceptar sin la
+  decisión explícita de quien lo comparte.
+- El mapa muestra un área orientativa, nunca una ubicación precisa.
+- Los audios son los mismos de V5.3. No se modificaron ni reemplazaron.
+- Falta probar el flujo completo entre dos cuentas reales y el mapa en iPhone.
+
+IMPORTANTE SOBRE CORREO
+El envío por correo público aún depende de que configures SMTP en Supabase.
+No se modificó esa configuración en esta actualización.
