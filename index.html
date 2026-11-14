@@ -209,7 +209,7 @@
 
 
 /* Huellitas: subtle message notification, once per newly arrived unread event */
-.quiet-notice{position:fixed;top:calc(75px + env(safe-area-inset-top,0px));left:50%;z-index:2350;display:flex;align-items:center;gap:9px;max-width:calc(100vw - 32px);min-width:155px;border:1px solid #ffffff45;border-radius:99px;background:#1b503bcf;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 8px 25px #0b33243b;color:#fff;padding:10px 15px;font:750 12px/1.3 inherit;white-space:nowrap;opacity:0;pointer-events:none;transform:translate(-50%,-12px);transition:opacity .2s ease,transform .2s ease}
+.quiet-notice{position:fixed;top:calc(75px + env(safe-area-inset-top,0px));left:50%;z-index:2350;display:flex;align-items:center;gap:9px;max-width:calc(100vw - 32px);min-width:155px;border:1px solid #ffffff45;border-radius:99px;background:#1b503bcf;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 8px 25px #0b33243b;color:#fff;padding:10px 15px;font:750 12px/1.3 system-ui,-apple-system,BlinkMacSystemFont,sans-serif;white-space:nowrap;opacity:0;pointer-events:none;transform:translate(-50%,-12px);transition:opacity .2s ease,transform .2s ease}
 .quiet-notice svg{width:17px;height:17px;flex:none}
 .quiet-notice.is-visible{opacity:1;pointer-events:auto;transform:translate(-50%,0)}
 @media(prefers-reduced-motion:reduce){.quiet-notice{transition:none}}
