@@ -175,6 +175,39 @@
 .map-note strong{color:#285b40}
 .map-empty-note{margin:10px 0 4px;padding:12px;border-radius:10px;background:#e9f2e8;color:#4a7255;font-size:12px;line-height:1.45}
 @media(max-width:620px){.photo-zoom{padding:74px 9px 72px}.detail-photo .detail-photo-expand{bottom:14px;right:10px;font-size:11px;padding:9px}}
+
+/* Huellitas V5.6: real photos remain fully visible; subtle blurred photo fills empty aspect-ratio bands. */
+.pet-photo,.detail-photo,.hero-slide{isolation:isolate}
+.pet-photo .photo-layer-backdrop,.detail-photo>.photo-layer-backdrop,.hero-slide .photo-layer-backdrop{
+ position:absolute!important;inset:-14px!important;width:calc(100% + 28px)!important;height:calc(100% + 28px)!important;
+ object-fit:cover!important;object-position:center!important;z-index:0!important;
+ filter:blur(18px) brightness(.76) saturate(1.04)!important;transform:scale(1.04)!important;
+ pointer-events:none!important;background:transparent!important;
+}
+.pet-photo .photo-layer-main,.detail-photo>.photo-layer-main,.hero-slide .photo-layer-main{
+ position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
+ object-fit:contain!important;object-position:center!important;
+ z-index:1!important;background:transparent!important;filter:drop-shadow(0 3px 8px rgba(7,28,18,.18))!important;
+ transform:none!important;
+}
+.pet-photo .photo-layer-main{transition:transform .35s ease!important}
+.pet-photo:hover .photo-layer-main{transform:scale(1.03)!important}
+.pet-photo.playing .photo-layer-main{animation:wiggle .7s ease}
+.detail-photo>.photo-layer-main{min-height:415px;max-height:555px;height:415px}
+@media(max-width:620px){.detail-photo>.photo-layer-main{height:265px;min-height:265px;max-height:265px}}
+.hero-slide .photo-layer-main{object-position:center!important;filter:drop-shadow(0 3px 7px rgba(0,0,0,.16)) saturate(.98)!important}
+.hero-slide .photo-layer-backdrop{filter:blur(16px) brightness(.63) saturate(1.08)!important}
+.hero-slide.active .photo-layer-main{transform:none!important}
+.hero-slide.active .photo-layer-backdrop{transform:scale(1.04)!important}
+/* Keep Leaflet maps independent from the global minimal icon SVG stylesheet. Canvas renders the search radius on iOS. */
+.leaflet-container svg.leaflet-zoom-animated{width:unset!important;height:unset!important;max-width:none!important;max-height:none!important;fill:unset!important;stroke:unset!important}
+.leaflet-marker-icon.hu-map-marker{touch-action:none!important;cursor:grab!important}
+.hu-map-marker{background:transparent;border:0}
+.hu-map-marker span{width:34px;height:34px;border-width:4px;box-shadow:0 3px 12px #092b1a66}
+.hu-map-marker span:after{width:9px;height:9px;left:9px;top:9px}
+.hu-map-marker.leaflet-drag-target{cursor:grabbing!important}
+.map-picker-help{font-size:12px;line-height:1.5}
+
 </style></head><body>
 <svg style="display:none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <symbol id="i-paw" viewBox="0 0 24 24"><ellipse cx="12" cy="16.6" rx="6.1" ry="4.1"/><ellipse cx="5" cy="9.8" rx="1.6" ry="2.3" transform="rotate(-15 5 9.8)"/><ellipse cx="9.2" cy="6.5" rx="1.5" ry="2.3" transform="rotate(-8 9.2 6.5)"/><ellipse cx="14.8" cy="6.5" rx="1.5" ry="2.3" transform="rotate(8 14.8 6.5)"/><ellipse cx="19" cy="9.8" rx="1.6" ry="2.3" transform="rotate(15 19 9.8)"/></symbol>
@@ -220,4 +253,4 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js"></script>
 <script src="./qr-local.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-<script src="./app.js"></script></body></html>
+<script src="./app.js?v=5.6"></script></body></html>
