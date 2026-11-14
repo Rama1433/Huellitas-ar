@@ -67,6 +67,46 @@ function accountHeader(){
 }
 function displayPhoto(p){return p.img||defaultPhoto}
 async function signedPhoto(path){if(!path)return '';const {data,error}=await db.storage.from(BUCKET).createSignedUrl(path,300);return error?'':data.signedUrl}
+
+// Refresh only the public/authorized photos currently being viewed.
+// Signed Storage URLs expire, so a cached thumbnail can fail later even if its file exists.
+const photoRenewing=new Map();
+async function renewPetPhotos(p){
+ if(!p?.id||!p.photoPaths?.length||!db)return false;
+ if(photoRenewing.has(p.id))return photoRenewing.get(p.id);
+ const promise=(async()=>{
+   const urls=await Promise.all(p.photoPaths.map(signedPhoto));
+   if(urls.length!==p.photoPaths.length||urls.some(u=>!u))return false;
+   p.photos=urls;p.img=urls[0];p.photoSignedAt=Date.now();
+   if(activePet?.id===p.id&&overlay.classList.contains('open')){
+     overlay.querySelectorAll('.photo-thumbs [data-photo-index]').forEach(btn=>{
+       const i=Number(btn.dataset.photoIndex),img=btn.querySelector('img');
+       if(img&&p.photos[i]&&img.src!==p.photos[i])img.src=p.photos[i];
+     });
+     galleryPhoto(p,detailPhotoIndex);
+     if(zoomOverlay&&!zoomOverlay.hidden){
+       const zoomImg=$('#photo-zoom-image');
+       if(zoomImg)zoomImg.src=p.photos[detailPhotoIndex]||p.photos[0];
+     }
+   }
+   return true;
+ })().finally(()=>photoRenewing.delete(p.id));
+ photoRenewing.set(p.id,promise);
+ return promise;
+}
+overlay.addEventListener('error',e=>{
+ const img=e.target;
+ if(!(img instanceof HTMLImageElement))return;
+ const detailImage=img.id==='detail-current-photo'||img.id==='photo-zoom-image'||Boolean(img.closest('.photo-thumbs'));
+ if(!detailImage||!activePet?.photoPaths?.length)return;
+ if(img.dataset.huPhotoRetry==='1'){img.alt='Foto temporalmente no disponible';return}
+ img.dataset.huPhotoRetry='1';
+ renewPetPhotos(activePet).then(ok=>{if(!ok&&img.isConnected)img.alt='Foto temporalmente no disponible'}).catch(()=>{});
+},true);
+overlay.addEventListener('load',e=>{
+ if(e.target instanceof HTMLImageElement)delete e.target.dataset.huPhotoRetry;
+},true);
+
 async function attachPhotos(posts){
  if(!posts.length)return posts;
  const ids=posts.map(p=>p.id);
@@ -78,6 +118,7 @@ async function attachPhotos(posts){
     p.photos=(await Promise.all(paths.map(signedPhoto))).filter(Boolean);
     p.img=p.photos[0]||'';
     p.photoPaths=paths;
+    p.photoSignedAt=Date.now();
  }));return posts;
 }
 function fromRow(p){return {...p,status:p.category,zone:p.locality,desc:p.description,short:p.description?.slice(0,98)||'',age:p.age_text||'Sin indicar',species:p.species,sex:({male:'Macho',female:'Hembra',unknown:'Sin indicar'})[p.sex]||'Sin indicar'}}
@@ -156,6 +197,7 @@ function detail(p){
  const area=(isSearch&&p.approx_lat!=null&&p.approx_lon!=null)?`<div class="map-section"><div class="private-label">${icon('pin')} Zona aproximada de búsqueda</div><p class="form-subtitle">Este círculo representa el área orientativa, no una dirección exacta. Tocá o mové el mapa para explorar la zona.</p><div class="pet-map" id="pet-map" role="img" aria-label="Mapa aproximado de ${safe(p.zone)}"></div><div class="map-note">Radio aproximado: ${radiusLabel(p.search_radius_m)} · ${safe(p.zone)}</div></div>`:(isSearch?`<div class="map-empty-note">Este aviso indica ${safe(p.zone)}, pero todavía no tiene delimitada una zona de búsqueda en el mapa.${currentUser?.id===p.owner_id?' Podés agregarla desde Editar publicación.':''}</div>`:'');
  show(`<div class="detail-layout"><div><div class="detail-photo">${p.img?`<span class="detail-photo-bg" aria-hidden="true"></span><img id="detail-current-photo" src="${safe(p.img)}" alt="Foto de ${safe(p.name)}" title="Tocá para ampliar" tabindex="0" role="button" aria-label="Ampliar foto de ${safe(p.name)}">`:`<span class="pet-fallback">${icon(p.species==='cat'?'cat':'dog')}</span>`}<span class="status ${safe(p.status)}">${statusLabel[p.status]}</span><button class="replay" data-action="replay">${icon('volume')} Escuchar de nuevo</button>${p.img?`<button type="button" class="detail-photo-expand" data-action="zoom-photo">${icon('search')} Ampliar foto</button>`:''}${gallery}</div>${thumbs}</div><div class="detail-content"><span class="modal-label">${icon(p.species==='cat'?'cat':'dog')} ${p.species==='cat'?'Gato':'Perro'} · ${statusLabel[p.status]}</span><h2>Hola, soy ${safe(p.name)}</h2><p class="detail-lead">Una historia que merece ser compartida.</p><div class="detail-chips"><span class="detail-chip">${icon('pin')} ${safe(p.zone)}</span><span class="detail-chip">${safe(p.age)}</span><span class="detail-chip">${safe(p.sex)}</span></div><p class="detail-description">${safe(p.desc)}</p>${area}<div class="private-gate"><div class="private-label">${icon('lock')} Contacto protegido</div><small>${currentUser?.id===p.owner_id?'Esta publicación es tuya. Podés gestionarla desde Mis publicaciones.':currentUser?'Podés enviar una solicitud privada al responsable.':'Para contactar al responsable necesitás registrarte o iniciar sesión.'} Los contactos se comparten únicamente con autorización.</small></div><div class="detail-actions">${currentUser?.id===p.owner_id?`<button data-action="my-posts">${icon('paw')} Administrar mi publicación</button>`:`<button data-action="contact">${icon(p.status==='adoption'?'heart':'shield')} ${requestLabel(p)}</button>`}<button class="share" data-action="share">${icon('share')} Compartir</button></div></div></div>`,false);
  if(p.img&&photos.length)galleryPhoto(p,0);
+ if(p.photoPaths?.length&&(!p.photoSignedAt||Date.now()-p.photoSignedAt>120000))renewPetPhotos(p).catch(()=>{});
  if(area)setTimeout(()=>{if(activePet?.id===p.id&&overlay.classList.contains('open'))showAreaMap(p)},130);
 }
 function auth(mode='login'){
