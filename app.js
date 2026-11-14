@@ -188,7 +188,7 @@ async function doAuth(form){
 }
 async function syncSession(session){
  currentUser=session?.user||null;noticeCount=0;accountHeader();
- if(!currentUser){isMod=false;notifRows=[];updateBell();return}
+ if(!currentUser){hideQuietNotice();isMod=false;notifRows=[];updateBell();return}
  const {data}=await db.from('hu_moderators').select('user_id').eq('user_id',currentUser.id).maybeSingle();isMod=Boolean(data);
  const {data:profile}=await db.from('hu_profiles').select('user_id').eq('user_id',currentUser.id).maybeSingle();
  if(!profile){const nm=String(currentUser.user_metadata?.display_name||currentUser.email?.split('@')[0]||'Usuario').slice(0,80);if(nm.length>=2)await db.from('hu_profiles').insert({user_id:currentUser.id,display_name:nm})}
@@ -527,11 +527,58 @@ function updateBell(){
  if(!badge||!button)return;badge.hidden=!noticeCount;badge.textContent=noticeCount>9?'9+':String(noticeCount);
  button.setAttribute('aria-label',`Notificaciones: ${noticeCount} sin leer`);
 }
+
+let quietNoticeTimer=null;
+const quietFallback=new Map();
+function quietSeen(uid){
+  const key='huellitas_notice_seen_v1_'+uid;
+  try{
+    const saved=JSON.parse(localStorage.getItem(key)||'[]');
+    if(Array.isArray(saved))return saved.filter(x=>typeof x==='string').slice(-160);
+  }catch(_){}
+  return quietFallback.get(uid)||[];
+}
+function hideQuietNotice(){
+  clearTimeout(quietNoticeTimer);
+  const el=$('#quiet-notice');
+  if(el){el.classList.remove('is-visible');el.setAttribute('aria-hidden','true');el.tabIndex=-1}
+}
+function showQuietNotice(){
+  if(document.hidden)return;
+  let el=$('#quiet-notice');
+  if(!el){
+    el=document.createElement('button');el.id='quiet-notice';el.type='button';
+    el.className='quiet-notice';
+    el.innerHTML=icon('bell')+'<span>Nuevo mensaje</span>';
+    el.setAttribute('aria-label','Nuevo mensaje. Abrir notificaciones');
+    el.addEventListener('click',()=>{hideQuietNotice();notifications()});
+    document.body.appendChild(el);
+  }
+  el.setAttribute('aria-hidden','false');el.tabIndex=0;
+  el.classList.add('is-visible');
+  clearTimeout(quietNoticeTimer);
+  quietNoticeTimer=setTimeout(hideQuietNotice,3000);
+}
+function notifyOnlyNew(rows){
+  if(!currentUser||document.hidden)return;
+  const uid=currentUser.id;
+  const unread=rows.filter(n=>!n.read_at).map(n=>n.id);
+  if(!unread.length)return;
+  const seen=quietSeen(uid);
+  const already=new Set(seen);
+  const hasNew=unread.some(id=>!already.has(id));
+  if(!hasNew)return;
+  const next=Array.from(new Set([...seen,...unread])).slice(-160);
+  quietFallback.set(uid,next);
+  try{localStorage.setItem('huellitas_notice_seen_v1_'+uid,JSON.stringify(next))}catch(_){}
+  showQuietNotice();
+}
+
 async function loadNotifications(){
  if(!currentUser||!db){noticeCount=0;notifRows=[];updateBell();return}
  const {data,error}=await db.from('hu_notifications').select('id,post_id,request_id,kind,read_at,created_at').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(50);
  if(error){console.warn('Notificaciones no disponibles',error.message);return}
- notifRows=data||[];noticeCount=notifRows.filter(n=>!n.read_at).length;updateBell();
+ notifRows=data||[];noticeCount=notifRows.filter(n=>!n.read_at).length;updateBell();notifyOnlyNew(notifRows);
 }
 async function notifications(){
  if(!currentUser){auth();return}
