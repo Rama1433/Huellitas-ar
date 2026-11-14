@@ -182,23 +182,25 @@
 /* The detail photo is deliberately in document flow so its container has height,
    and nothing overlaps the description, map or buttons. */
 .detail-photo{position:relative;overflow:hidden;min-height:265px;background:#e5eee7}
-.detail-photo>img#detail-current-photo{position:relative;display:block;inset:auto;width:100%;height:415px;min-height:415px;max-height:415px;object-fit:contain;object-position:center;background:#e5eee7;transform:none;filter:none;z-index:1}
+.detail-photo-bg{position:absolute;inset:0;background-image:var(--detail-photo-bg);background-size:cover;background-position:center;filter:blur(18px) saturate(.94);transform:scale(1.12);opacity:.68;z-index:0}
+.detail-photo:after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(245,249,245,.12),rgba(229,238,231,.42));z-index:1;pointer-events:none}
+.detail-photo>img#detail-current-photo{position:relative;display:block;inset:auto;width:100%;height:415px;min-height:415px;max-height:415px;object-fit:contain;object-position:center;background:transparent;transform:none;filter:none;z-index:2}
 @media(max-width:620px){
  .detail-photo{min-height:270px}
  .detail-photo>img#detail-current-photo{height:270px;min-height:270px;max-height:270px}
 }
-.detail-photo>.status,.detail-photo>.replay,.detail-photo>.detail-photo-expand,.detail-photo>.photo-gallery-tools{z-index:3}
+.detail-photo>.status,.detail-photo>.replay,.detail-photo>.detail-photo-expand,.detail-photo>.photo-gallery-tools{z-index:4}
 /* A real pin above the search radius. No Leaflet SVG icon is required. */
 .hu-public-map-marker{background:transparent!important;border:none!important;pointer-events:auto}
 .hu-public-map-marker .pin-drop{
- display:block;position:relative;width:30px;height:30px;
- background:#205f45;border:3px solid #fff;
- border-radius:55% 55% 55% 6%;transform:rotate(-45deg);
+ display:block;position:relative;width:22px;height:22px;
+ background:#205f45;border:4px solid #fff;
+ border-radius:50%;transform:none;
  box-shadow:0 4px 12px #102b1a77;
 }
 .hu-public-map-marker .pin-drop:after{
- content:'';position:absolute;left:9px;top:9px;width:7px;height:7px;
- border-radius:50%;background:#fff;
+ content:'';position:absolute;left:50%;top:50%;width:6px;height:6px;
+ border-radius:50%;background:#fff;transform:translate(-50%,-50%);
 }
 .leaflet-marker-icon.hu-public-map-marker{z-index:550!important}
 /* Enlarged gallery is a separate solid, fullscreen viewer. */

@@ -140,7 +140,9 @@ function closePhotoZoom(){if(zoomOverlay)zoomOverlay.hidden=true}
 function galleryPhoto(p,index){
  if(!p?.photos?.length)return;
  detailPhotoIndex=(index+p.photos.length)%p.photos.length;
- const img=$('#detail-current-photo');if(img)img.src=p.photos[detailPhotoIndex];
+ const current=p.photos[detailPhotoIndex];
+ const img=$('#detail-current-photo');if(img)img.src=current;
+ const frame=$('.detail-photo');if(frame&&current)frame.style.setProperty('--detail-photo-bg',`url("${current}")`);
  const counter=$('#detail-photo-count');if(counter)counter.textContent=`${detailPhotoIndex+1} / ${p.photos.length}`;
  document.querySelectorAll('[data-photo-index]').forEach(b=>b.classList.toggle('selected',Number(b.dataset.photoIndex)===detailPhotoIndex));
 }
@@ -152,7 +154,8 @@ function detail(p){
  const thumbs=multi?`<div class="photo-thumbs">${photos.map((url,i)=>`<button class="${i===0?'selected':''}" data-action="gallery-pick" data-photo-index="${i}" aria-label="Ver foto ${i+1}"><img src="${safe(url)}" alt="Foto ${i+1}"></button>`).join('')}</div>`:'';
  const isSearch=p.status==='lost'||p.status==='found';
  const area=(isSearch&&p.approx_lat!=null&&p.approx_lon!=null)?`<div class="map-section"><div class="private-label">${icon('pin')} Zona aproximada de búsqueda</div><p class="form-subtitle">Este círculo representa el área orientativa, no una dirección exacta. Tocá o mové el mapa para explorar la zona.</p><div class="pet-map" id="pet-map" role="img" aria-label="Mapa aproximado de ${safe(p.zone)}"></div><div class="map-note">Radio aproximado: ${(p.search_radius_m||2000)/1000} km · ${safe(p.zone)}</div></div>`:(isSearch?`<div class="map-empty-note">Este aviso indica ${safe(p.zone)}, pero todavía no tiene delimitada una zona de búsqueda en el mapa.${currentUser?.id===p.owner_id?' Podés agregarla desde Editar publicación.':''}</div>`:'');
- show(`<div class="detail-layout"><div><div class="detail-photo">${p.img?`<img id="detail-current-photo" src="${safe(p.img)}" alt="Foto de ${safe(p.name)}" title="Tocá para ampliar" tabindex="0" role="button" aria-label="Ampliar foto de ${safe(p.name)}">`:`<span class="pet-fallback">${icon(p.species==='cat'?'cat':'dog')}</span>`}<span class="status ${safe(p.status)}">${statusLabel[p.status]}</span><button class="replay" data-action="replay">${icon('volume')} Escuchar de nuevo</button>${p.img?`<button type="button" class="detail-photo-expand" data-action="zoom-photo">${icon('search')} Ampliar foto</button>`:''}${gallery}</div>${thumbs}</div><div class="detail-content"><span class="modal-label">${icon(p.species==='cat'?'cat':'dog')} ${p.species==='cat'?'Gato':'Perro'} · ${statusLabel[p.status]}</span><h2>Hola, soy ${safe(p.name)}</h2><p class="detail-lead">Una historia que merece ser compartida.</p><div class="detail-chips"><span class="detail-chip">${icon('pin')} ${safe(p.zone)}</span><span class="detail-chip">${safe(p.age)}</span><span class="detail-chip">${safe(p.sex)}</span></div><p class="detail-description">${safe(p.desc)}</p>${area}<div class="private-gate"><div class="private-label">${icon('lock')} Contacto protegido</div><small>${currentUser?.id===p.owner_id?'Esta publicación es tuya. Podés gestionarla desde Mis publicaciones.':currentUser?'Podés enviar una solicitud privada al responsable.':'Para contactar al responsable necesitás registrarte o iniciar sesión.'} Los contactos se comparten únicamente con autorización.</small></div><div class="detail-actions">${currentUser?.id===p.owner_id?`<button data-action="my-posts">${icon('paw')} Administrar mi publicación</button>`:`<button data-action="contact">${icon(p.status==='adoption'?'heart':'shield')} ${requestLabel(p)}</button>`}<button class="share" data-action="share">${icon('share')} Compartir</button></div></div></div>`,false);
+ show(`<div class="detail-layout"><div><div class="detail-photo">${p.img?`<span class="detail-photo-bg" aria-hidden="true"></span><img id="detail-current-photo" src="${safe(p.img)}" alt="Foto de ${safe(p.name)}" title="Tocá para ampliar" tabindex="0" role="button" aria-label="Ampliar foto de ${safe(p.name)}">`:`<span class="pet-fallback">${icon(p.species==='cat'?'cat':'dog')}</span>`}<span class="status ${safe(p.status)}">${statusLabel[p.status]}</span><button class="replay" data-action="replay">${icon('volume')} Escuchar de nuevo</button>${p.img?`<button type="button" class="detail-photo-expand" data-action="zoom-photo">${icon('search')} Ampliar foto</button>`:''}${gallery}</div>${thumbs}</div><div class="detail-content"><span class="modal-label">${icon(p.species==='cat'?'cat':'dog')} ${p.species==='cat'?'Gato':'Perro'} · ${statusLabel[p.status]}</span><h2>Hola, soy ${safe(p.name)}</h2><p class="detail-lead">Una historia que merece ser compartida.</p><div class="detail-chips"><span class="detail-chip">${icon('pin')} ${safe(p.zone)}</span><span class="detail-chip">${safe(p.age)}</span><span class="detail-chip">${safe(p.sex)}</span></div><p class="detail-description">${safe(p.desc)}</p>${area}<div class="private-gate"><div class="private-label">${icon('lock')} Contacto protegido</div><small>${currentUser?.id===p.owner_id?'Esta publicación es tuya. Podés gestionarla desde Mis publicaciones.':currentUser?'Podés enviar una solicitud privada al responsable.':'Para contactar al responsable necesitás registrarte o iniciar sesión.'} Los contactos se comparten únicamente con autorización.</small></div><div class="detail-actions">${currentUser?.id===p.owner_id?`<button data-action="my-posts">${icon('paw')} Administrar mi publicación</button>`:`<button data-action="contact">${icon(p.status==='adoption'?'heart':'shield')} ${requestLabel(p)}</button>`}<button class="share" data-action="share">${icon('share')} Compartir</button></div></div></div>`,false);
+ if(p.img&&photos.length)galleryPhoto(p,0);
  if(area)setTimeout(()=>{if(activePet?.id===p.id&&overlay.classList.contains('open'))showAreaMap(p)},130);
 }
 function auth(mode='login'){
@@ -471,7 +474,7 @@ function showAreaMap(p){
  L.marker([lat,lon],{
   interactive:false,
   keyboard:false,
-  icon:L.divIcon({className:'hu-public-map-marker',html:'<span class="pin-drop" aria-hidden="true"></span>',iconSize:[38,44],iconAnchor:[19,41]})
+  icon:L.divIcon({className:'hu-public-map-marker',html:'<span class="pin-drop" aria-hidden="true"></span>',iconSize:[22,22],iconAnchor:[11,11]})
  }).addTo(activeMap);
  const mapInstance=activeMap;
  function fitPublishedArea(){if(activeMap!==mapInstance||!el.isConnected||!areaCircle)return;activeMap.invalidateSize();activeMap.fitBounds(areaCircle.getBounds(),{padding:[40,40],maxZoom:13})}
@@ -495,7 +498,7 @@ function drawOverviewCircles(){
   circle.on('click',()=>detail(p));group.addLayer(circle);
   L.marker([Number(p.approx_lat),Number(p.approx_lon)],{
    huOverviewPin:true,
-   icon:L.divIcon({className:'hu-public-map-marker',html:'<span class="pin-drop" aria-hidden="true"></span>',iconSize:[38,44],iconAnchor:[19,41]})
+   icon:L.divIcon({className:'hu-public-map-marker',html:'<span class="pin-drop" aria-hidden="true"></span>',iconSize:[22,22],iconAnchor:[11,11]})
   }).addTo(overviewMap).bindTooltip(`${safe(p.name)} · ${safe(p.zone)}`).on('click',()=>detail(p));
  });
  if(group.getLayers().length)overviewMap.fitBounds(group.getBounds(),{padding:[20,20],maxZoom:12});
