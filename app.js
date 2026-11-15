@@ -919,7 +919,7 @@ async function markNoticesRead(){
 }
 
 root.addEventListener('click',e=>{const b=e.target.closest('[data-action],[data-filter]');if(!b)return;if(b.dataset.filter){filter=b.dataset.filter;render();return}const a=b.dataset.action;if(a==='explore'){$('#mascotas').scrollIntoView({behavior:'smooth'});return}if(a==='notifications'){notifications();return}if(a==='toggle-overview-map'){toggleOverviewMap();return}if(a==='publish'){publish();return}if(a==='login'){accountMenu();return}if(a==='toggle-sound'){soundOn=!soundOn;b.innerHTML=icon(soundOn?'volume':'mute')+`<span>Sonidos ${soundOn?'activados':'silenciados'}</span>`;b.setAttribute('aria-pressed',String(soundOn));return}if(a==='hero-open'){if(Date.now()-lastHeroSwipe<450)return;openHero();return}if(a==='hero-dot'){heroIndex=Number(b.dataset.index)||0;renderHero();startHero();return}if(a==='pet-touch'){touchPet(b.dataset.id,b);return}if(a==='detail'){detail(pets.find(p=>p.id===b.dataset.id));return}if(a==='pet-share'){share(pets.find(p=>p.id===b.dataset.id));return}if(a==='my-favorites'){myFavorites();return}if(a==='like'){toggleFavorite(b.dataset.id);return}});
-overlay.addEventListener('click',async e=>{if(e.target?.id==='detail-current-photo'){openPhotoZoom();return}const b=e.target.closest('[data-action]');if(!b){if(e.target===overlay)close();return}const a=b.dataset.action;if(a==='close'){close();return}if(a==='auth-login'||a==='auth-register'||a==='auth-reset'){auth(a.replace('auth-',''));return}if(a==='logout'){await db.auth.signOut();currentUser=null;isMod=false;accountHeader();close();toast('Cerraste sesión');return}if(a==='account'){accountMenu();return}if(a==='my-requests'){myRequests();return}if(a==='my-contact'){myContact();return}if(a==='notifications'){notifications();return}if(a==='open-notification'){openNotification(b.dataset.id);return}if(a==='mark-notices-read'){markNoticesRead();return}if(a==='my-posts'){myPosts();return}if(a==='my-favorites'){myFavorites();return}if(a==='favorite-open'){detail(pets.find(p=>p.id===b.dataset.id));return}if(a==='favorite-remove'){if(await toggleFavorite(b.dataset.id))myFavorites();return}if(a==='detail-favorite'&&activePet){toggleFavorite(activePet.id);return}if(a==='moderation'){moderation();return}if(a==='view-inbox'){inbox(b.dataset.id);return}if(a==='back-inbox'){inbox(currentInboxId);return}if(a==='accept-open'){openAccept(b.dataset.id);return}if(a==='confirm-accept'){answerRequest(b.dataset.id,'accepted');return}if(a==='share-my-contact'){promptShareContact(b.dataset.id,b.dataset.return);return}if(a==='confirm-share'){confirmShare(b.dataset.id);return}if(a==='revoke-share'){revokeShare(b.dataset.id,b.dataset.return);return}if(a==='answer-request'){answerRequest(b.dataset.id,b.dataset.status);return}if(a==='resolve-post'){resolvePost(b.dataset.id);return}if(a==='map-use-center'){mapUseCenter();return}if(a==='map-reset-center'){mapResetCenter();return}if(a==='zoom-photo'){openPhotoZoom();return}if(a==='mod-post'){moderate(b.dataset.id,b.dataset.status);return}if(a==='feature-post'){featurePost(b.dataset.id,b.dataset.feature==='true');return}if(a==='publish'){publish();return}if(a==='replay'&&activePet){sound(activePet.species);return}if(a==='gallery-prev'){galleryPhoto(activePet,detailPhotoIndex-1);return}if(a==='gallery-next'){galleryPhoto(activePet,detailPhotoIndex+1);return}if(a==='gallery-pick'){galleryPhoto(activePet,Number(b.dataset.photoIndex)||0);return}if(a==='contact'){startContact();return}if(a==='report-post'){reportPet();return}if(a==='mod-reports'){moderationReports();return}if(a==='mod-report-update'){moderateReport(b.dataset.id,b.dataset.status);return}if(a==='share'&&activePet){share(activePet);return}if(a==='share-whatsapp'){shareWhatsapp();return}if(a==='share-copy'){copyShare();return}if(a==='share-native'){shareNative();return}if(a==='share-flyer'&&activePet){generateFlyer(activePet);return}if(a==='edit-post'){editPost(b.dataset.id);return}if(a==='delete-post'){deletePost(b.dataset.id);return}});
+overlay.addEventListener('click',async e=>{if(e.target?.id==='detail-current-photo'){if(Date.now()-lastDetailSwipe<500)return;openPhotoZoom();return}const b=e.target.closest('[data-action]');if(!b){if(e.target===overlay)close();return}const a=b.dataset.action;if(a==='close'){close();return}if(a==='auth-login'||a==='auth-register'||a==='auth-reset'){auth(a.replace('auth-',''));return}if(a==='logout'){await db.auth.signOut();currentUser=null;isMod=false;accountHeader();close();toast('Cerraste sesión');return}if(a==='account'){accountMenu();return}if(a==='my-requests'){myRequests();return}if(a==='my-contact'){myContact();return}if(a==='notifications'){notifications();return}if(a==='open-notification'){openNotification(b.dataset.id);return}if(a==='mark-notices-read'){markNoticesRead();return}if(a==='my-posts'){myPosts();return}if(a==='my-favorites'){myFavorites();return}if(a==='favorite-open'){detail(pets.find(p=>p.id===b.dataset.id));return}if(a==='favorite-remove'){if(await toggleFavorite(b.dataset.id))myFavorites();return}if(a==='detail-favorite'&&activePet){toggleFavorite(activePet.id);return}if(a==='moderation'){moderation();return}if(a==='view-inbox'){inbox(b.dataset.id);return}if(a==='back-inbox'){inbox(currentInboxId);return}if(a==='accept-open'){openAccept(b.dataset.id);return}if(a==='confirm-accept'){answerRequest(b.dataset.id,'accepted');return}if(a==='share-my-contact'){promptShareContact(b.dataset.id,b.dataset.return);return}if(a==='confirm-share'){confirmShare(b.dataset.id);return}if(a==='revoke-share'){revokeShare(b.dataset.id,b.dataset.return);return}if(a==='answer-request'){answerRequest(b.dataset.id,b.dataset.status);return}if(a==='resolve-post'){resolvePost(b.dataset.id);return}if(a==='map-use-center'){mapUseCenter();return}if(a==='map-reset-center'){mapResetCenter();return}if(a==='zoom-photo'){openPhotoZoom();return}if(a==='mod-post'){moderate(b.dataset.id,b.dataset.status);return}if(a==='feature-post'){featurePost(b.dataset.id,b.dataset.feature==='true');return}if(a==='publish'){publish();return}if(a==='replay'&&activePet){sound(activePet.species);return}if(a==='gallery-prev'){galleryPhoto(activePet,detailPhotoIndex-1);return}if(a==='gallery-next'){galleryPhoto(activePet,detailPhotoIndex+1);return}if(a==='gallery-pick'){galleryPhoto(activePet,Number(b.dataset.photoIndex)||0);return}if(a==='contact'){startContact();return}if(a==='report-post'){reportPet();return}if(a==='mod-reports'){moderationReports();return}if(a==='mod-report-update'){moderateReport(b.dataset.id,b.dataset.status);return}if(a==='share'&&activePet){share(activePet);return}if(a==='share-whatsapp'){shareWhatsapp();return}if(a==='share-copy'){copyShare();return}if(a==='share-native'){shareNative();return}if(a==='share-flyer'&&activePet){generateFlyer(activePet);return}if(a==='edit-post'){editPost(b.dataset.id);return}if(a==='delete-post'){deletePost(b.dataset.id);return}});
 overlay.addEventListener('submit',e=>{e.preventDefault();const f=e.target;if(f.id==='auth-form'){doAuth(f);return}if(f.id==='my-contact-form'){saveMyContact(f);return}if(f.id==='pet-form'){submitPost(f);return}if(f.id==='request-form'){submitRequest(f);return}if(f.id==='report-pet-form'){submitPetReport(f);return}if(f.id==='edit-post-form'){savePost(f);return}});
 overlay.addEventListener('change',e=>{
  if(e.target.id==='photo-input'){previewFiles(e.target);return}
@@ -937,6 +937,47 @@ zoomOverlay.addEventListener('click',e=>{
  else if(b.dataset.zoomAction==='prev')photoZoomSet(detailPhotoIndex-1);
  else if(b.dataset.zoomAction==='next')photoZoomSet(detailPhotoIndex+1);
 });
+
+// Swipe left/right through the enlarged gallery on phones. Vertical gestures
+// remain untouched, as do button taps and browser pinch gestures.
+let zoomTouchStart=null;
+zoomOverlay.addEventListener('touchstart',e=>{
+ if(zoomOverlay.hidden||e.touches.length!==1||e.target.closest('button')){zoomTouchStart=null;return}
+ const t=e.changedTouches[0];
+ zoomTouchStart={id:t.identifier,x:t.clientX,y:t.clientY};
+},{passive:true});
+zoomOverlay.addEventListener('touchend',e=>{
+ if(!zoomTouchStart||zoomOverlay.hidden){zoomTouchStart=null;return}
+ const t=[...e.changedTouches].find(x=>x.identifier===zoomTouchStart.id);
+ const start=zoomTouchStart;zoomTouchStart=null;
+ if(!t)return;
+ const dx=t.clientX-start.x,dy=t.clientY-start.y;
+ if(Math.abs(dx)>48&&Math.abs(dx)>Math.abs(dy)*1.25){
+  const photos=activePet?.photos?.length?activePet.photos:(activePet?.img?[activePet.img]:[]);
+  if(photos.length>1)photoZoomSet(detailPhotoIndex+(dx<0?1:-1));
+ }
+},{passive:true});
+zoomOverlay.addEventListener('touchcancel',()=>{zoomTouchStart=null},{passive:true});
+
+// The same gesture works inside the pet detail without opening photo zoom.
+let detailTouchStart=null,lastDetailSwipe=0;
+modal.addEventListener('touchstart',e=>{
+ if(e.touches.length!==1||e.target.id!=='detail-current-photo'){detailTouchStart=null;return}
+ const t=e.changedTouches[0];detailTouchStart={id:t.identifier,x:t.clientX,y:t.clientY};
+},{passive:true});
+modal.addEventListener('touchend',e=>{
+ if(!detailTouchStart)return;
+ const start=detailTouchStart;detailTouchStart=null;
+ const t=[...e.changedTouches].find(x=>x.identifier===start.id);
+ if(!t)return;
+ const dx=t.clientX-start.x,dy=t.clientY-start.y;
+ if(Math.abs(dx)>48&&Math.abs(dx)>Math.abs(dy)*1.25&&activePet?.photos?.length>1){
+  lastDetailSwipe=Date.now();
+  galleryPhoto(activePet,detailPhotoIndex+(dx<0?1:-1));
+ }
+},{passive:true});
+modal.addEventListener('touchcancel',()=>{detailTouchStart=null},{passive:true});
+
 modal.addEventListener('keydown',e=>{if(e.target.id==='detail-current-photo'&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openPhotoZoom()}});
 overlay.addEventListener('click',e=>{if(e.target===overlay)close()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!zoomOverlay.hidden){closePhotoZoom();return}if(!zoomOverlay.hidden&&e.key==='ArrowLeft'){photoZoomSet(detailPhotoIndex-1);return}if(!zoomOverlay.hidden&&e.key==='ArrowRight'){photoZoomSet(detailPhotoIndex+1);return}if(e.key==='Escape'&&overlay.classList.contains('open'))close()});
 $('#search').addEventListener('input',e=>{query=e.target.value.toLowerCase().trim();render()});$('#zone').addEventListener('change',e=>{zone=e.target.value;render()});
