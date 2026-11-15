@@ -380,9 +380,125 @@ async function syncSession(session){
  }
  await loadNotifications();
  await loadFavoriteState();
+ maybeOpenPushPanel().catch(()=>{});
 }
+
+const ADMIN_PUSH_URL = PROJECT_URL + '/functions/v1/huellitas-admin-push';
+const isInstalledHuellitas = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isAppleMobile = () => /iPhone|iPad|iPod/i.test(navigator.userAgent);
+function canUseAdminPush(){
+ return window.isSecureContext && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+}
+function decodePushKey(text){
+ const encoded=String(text||'').replace(/-/g,'+').replace(/_/g,'/');
+ const base64=encoded.padEnd(Math.ceil(encoded.length/4)*4,'=');
+ return Uint8Array.from(atob(base64),c=>c.charCodeAt(0));
+}
+async function callAdminPush(path,body){
+ const session=(await db.auth.getSession()).data.session;
+ if(!session?.access_token)throw new Error('Iniciá sesión nuevamente para activar los avisos.');
+ const response=await fetch(ADMIN_PUSH_URL+'/'+path,{
+  method:'POST',headers:{
+   'Content-Type':'application/json',
+   'apikey':PUBLISHABLE,
+   'Authorization':'Bearer '+session.access_token
+  },body:JSON.stringify(body||{})
+ });
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok||data.error)throw new Error(data.error||'No se pudo completar la operación.');
+ return data;
+}
+async function adminPushSettings(){
+ if(!currentUser||!isMod){toast('Solo la cuenta de moderación puede activar estos avisos.');return}
+ const compatible=canUseAdminPush();
+ let enabled=false;
+ if(compatible){
+  try{
+   const registration=await navigator.serviceWorker.getRegistration('/');
+   enabled=Boolean(await registration?.pushManager?.getSubscription());
+  }catch(_){}
+ }
+ const needsHomeScreen=isAppleMobile()&&!isInstalledHuellitas();
+ const denied=compatible&&Notification.permission==='denied';
+ show('<div class="form-content"><span class="modal-label">'+icon('bell')+' AVISOS DE ADMINISTRACIÓN</span>'+
+  '<h2>Avisos en este dispositivo</h2>'+
+  '<p class="form-subtitle">Recibí una notificación cuando haya mascotas nuevas para aprobar o publicaciones reportadas, incluso con Huellitas cerrada.</p>'+
+  '<div class="push-status">'+icon('bell')+' '+(enabled?'Notificaciones activadas':denied?'Notificaciones bloqueadas':'Notificaciones desactivadas')+'</div>'+
+  (needsHomeScreen?'<p class="push-instructions">En iPhone, abrí Huellitas desde Safari, tocá Compartir → Agregar a pantalla de inicio y después abrila desde el ícono para activar las notificaciones.</p>':'')+
+  (!compatible?'<p class="push-instructions">Este navegador no permite notificaciones push. Probá desde Huellitas instalada en la pantalla de inicio.</p>':'')+
+  (denied?'<p class="push-instructions">Los permisos están bloqueados. Habilitá las notificaciones de Huellitas desde Ajustes del iPhone.</p>':'')+
+  (compatible&&!needsHomeScreen&&!denied?
+    (enabled?
+     '<button type="button" class="submit" data-action="push-test">'+icon('bell')+' Enviar notificación de prueba</button>'+
+     '<button type="button" class="menu-btn" data-action="push-disable">Desactivar en este dispositivo</button>'
+     :'<button type="button" class="submit" data-action="push-enable">'+icon('bell')+' Activar avisos en este dispositivo</button>'
+    ):'')+
+  '<button type="button" class="menu-btn" data-action="account">Volver a mi cuenta</button>'+
+  '<p class="form-caption">Solo reciben estas alertas los dispositivos activados por cuentas moderadoras. No incluyen datos privados de contacto.</p>'+
+  '</div>',true);
+}
+async function activateAdminPush(){
+ if(!currentUser||!isMod)return;
+ if(!canUseAdminPush()){toast('Este dispositivo no permite notificaciones push.');return}
+ if(isAppleMobile()&&!isInstalledHuellitas()){toast('Instalá Huellitas en la pantalla de inicio y abrila desde su ícono.');return}
+ try{
+  // MUST be called directly from the user-initiated click; no awaits before permission request.
+  const permission=Notification.permission==='default'?await Notification.requestPermission():Notification.permission;
+  if(permission!=='granted'){toast('Necesitás permitir notificaciones para recibir los avisos.');adminPushSettings();return}
+  toast('Activando avisos...');
+  const registration=await navigator.serviceWorker.register('/sw.js',{scope:'/'});
+  await navigator.serviceWorker.ready;
+  const keyResponse=await fetch(ADMIN_PUSH_URL+'/public-key',{headers:{apikey:PUBLISHABLE}});
+  if(!keyResponse.ok)throw new Error('No pudimos obtener la configuración de avisos.');
+  const result=await keyResponse.json();
+  if(!result?.publicKey)throw new Error('Falta la clave pública de notificaciones.');
+  let subscription=await registration.pushManager.getSubscription();
+  let newSubscription=false;
+  if(!subscription){
+   subscription=await registration.pushManager.subscribe({
+    userVisibleOnly:true,applicationServerKey:decodePushKey(result.publicKey)
+   });
+   newSubscription=true;
+  }
+  try{await callAdminPush('subscribe',subscription.toJSON())}
+  catch(e){if(newSubscription)await subscription.unsubscribe().catch(()=>{});throw e}
+  toast('Avisos activados en este dispositivo.');
+  await adminPushSettings();
+ }catch(e){toast('No pudimos activar los avisos: '+(e?.message||'Reintentá'))}
+}
+async function disableAdminPush(silent=false){
+ if(!canUseAdminPush())return;
+ try{
+  const registration=await navigator.serviceWorker.getRegistration('/');
+  const subscription=await registration?.pushManager?.getSubscription();
+  if(subscription){
+   try{if(currentUser&&isMod)await callAdminPush('unsubscribe',{endpoint:subscription.endpoint})}
+   catch(e){console.warn('No se pudo borrar la suscripción remota',e?.message)}
+   await subscription.unsubscribe();
+  }
+  if(!silent){toast('Avisos desactivados en este dispositivo.');await adminPushSettings()}
+ }catch(e){if(!silent)toast('No pudimos desactivar las notificaciones: '+(e?.message||'Reintentá'))}
+}
+async function testAdminPush(){
+ if(!currentUser||!isMod)return;
+ try{
+  toast('Enviando notificación de prueba...');
+  const result=await callAdminPush('test',{});
+  if(result.ok)toast('Prueba enviada. Revisá las notificaciones de tu iPhone.');
+  else toast('No pudimos entregar la notificación de prueba.');
+ }catch(e){toast('La prueba falló: '+(e?.message||'Reintentá'))}
+}
+let pushDeepLinkOpened=false;
+async function maybeOpenPushPanel(){
+ if(pushDeepLinkOpened||!isMod||!currentUser)return;
+ const target=new URLSearchParams(window.location.search).get('panel');
+ if(target!=='moderacion'&&target!=='reportes')return;
+ pushDeepLinkOpened=true;
+ if(target==='reportes')await moderationReports();else await moderation();
+}
+
 function accountMenu(){if(!currentUser){auth();return}
- show(`<div class="form-content"><span class="modal-label">${icon('user')} MI CUENTA</span><h2>¡Hola!</h2><p class="form-subtitle">${safe(currentUser.email)}</p><div class="request-list"><button class="menu-btn" data-action="notifications">${icon('bell')} Notificaciones ${noticeCount?`<strong class="pill-count">${noticeCount}</strong>`:''}</button><button class="menu-btn" data-action="my-posts">${icon('paw')} Mis publicaciones</button><button class="menu-btn" data-action="my-favorites">${icon('heart')} Mis favoritos</button><button class="menu-btn" data-action="my-requests">${icon('heart')} Mis solicitudes</button><button class="menu-btn" data-action="my-contact">${icon('user')} Mi contacto privado</button>${isMod?`<button class="menu-btn" data-action="moderation">${icon('shield')} Panel de moderación</button>`:''}<button class="menu-btn" data-action="publish">${icon('plus')} Publicar mascota</button><button class="menu-btn" data-action="logout">Cerrar sesión</button></div><p class="form-caption">Nadie ve tus datos de contacto a menos que decidas compartirlos con una persona tras aceptar su solicitud.</p></div>`,true)
+ show(`<div class="form-content"><span class="modal-label">${icon('user')} MI CUENTA</span><h2>¡Hola!</h2><p class="form-subtitle">${safe(currentUser.email)}</p><div class="request-list"><button class="menu-btn" data-action="notifications">${icon('bell')} Notificaciones ${noticeCount?`<strong class="pill-count">${noticeCount}</strong>`:''}</button><button class="menu-btn" data-action="my-posts">${icon('paw')} Mis publicaciones</button><button class="menu-btn" data-action="my-favorites">${icon('heart')} Mis favoritos</button><button class="menu-btn" data-action="my-requests">${icon('heart')} Mis solicitudes</button><button class="menu-btn" data-action="my-contact">${icon('user')} Mi contacto privado</button>${isMod?`<button class="menu-btn" data-action="moderation">${icon('shield')} Panel de moderación</button><button class="menu-btn" data-action="push-settings">${icon('bell')} Avisos en mi iPhone / dispositivo</button>`:''}<button class="menu-btn" data-action="publish">${icon('plus')} Publicar mascota</button><button class="menu-btn" data-action="logout">Cerrar sesión</button></div><p class="form-caption">Nadie ve tus datos de contacto a menos que decidas compartirlos con una persona tras aceptar su solicitud.</p></div>`,true)
 }
 async function myContact(){
  if(!currentUser){auth();return}
@@ -919,7 +1035,7 @@ async function markNoticesRead(){
 }
 
 root.addEventListener('click',e=>{const b=e.target.closest('[data-action],[data-filter]');if(!b)return;if(b.dataset.filter){filter=b.dataset.filter;render();return}const a=b.dataset.action;if(a==='explore'){$('#mascotas').scrollIntoView({behavior:'smooth'});return}if(a==='notifications'){notifications();return}if(a==='toggle-overview-map'){toggleOverviewMap();return}if(a==='publish'){publish();return}if(a==='login'){accountMenu();return}if(a==='toggle-sound'){soundOn=!soundOn;b.innerHTML=icon(soundOn?'volume':'mute')+`<span>Sonidos ${soundOn?'activados':'silenciados'}</span>`;b.setAttribute('aria-pressed',String(soundOn));return}if(a==='hero-open'){if(Date.now()-lastHeroSwipe<450)return;openHero();return}if(a==='hero-dot'){heroIndex=Number(b.dataset.index)||0;renderHero();startHero();return}if(a==='pet-touch'){touchPet(b.dataset.id,b);return}if(a==='detail'){detail(pets.find(p=>p.id===b.dataset.id));return}if(a==='pet-share'){share(pets.find(p=>p.id===b.dataset.id));return}if(a==='my-favorites'){myFavorites();return}if(a==='like'){toggleFavorite(b.dataset.id);return}});
-overlay.addEventListener('click',async e=>{if(e.target?.id==='detail-current-photo'){if(Date.now()-lastDetailSwipe<500)return;openPhotoZoom();return}const b=e.target.closest('[data-action]');if(!b){if(e.target===overlay)close();return}const a=b.dataset.action;if(a==='close'){close();return}if(a==='auth-login'||a==='auth-register'||a==='auth-reset'){auth(a.replace('auth-',''));return}if(a==='logout'){await db.auth.signOut();currentUser=null;isMod=false;accountHeader();close();toast('Cerraste sesión');return}if(a==='account'){accountMenu();return}if(a==='my-requests'){myRequests();return}if(a==='my-contact'){myContact();return}if(a==='notifications'){notifications();return}if(a==='open-notification'){openNotification(b.dataset.id);return}if(a==='mark-notices-read'){markNoticesRead();return}if(a==='my-posts'){myPosts();return}if(a==='my-favorites'){myFavorites();return}if(a==='favorite-open'){detail(pets.find(p=>p.id===b.dataset.id));return}if(a==='favorite-remove'){if(await toggleFavorite(b.dataset.id))myFavorites();return}if(a==='detail-favorite'&&activePet){toggleFavorite(activePet.id);return}if(a==='moderation'){moderation();return}if(a==='view-inbox'){inbox(b.dataset.id);return}if(a==='back-inbox'){inbox(currentInboxId);return}if(a==='accept-open'){openAccept(b.dataset.id);return}if(a==='confirm-accept'){answerRequest(b.dataset.id,'accepted');return}if(a==='share-my-contact'){promptShareContact(b.dataset.id,b.dataset.return);return}if(a==='confirm-share'){confirmShare(b.dataset.id);return}if(a==='revoke-share'){revokeShare(b.dataset.id,b.dataset.return);return}if(a==='answer-request'){answerRequest(b.dataset.id,b.dataset.status);return}if(a==='resolve-post'){resolvePost(b.dataset.id);return}if(a==='map-use-center'){mapUseCenter();return}if(a==='map-reset-center'){mapResetCenter();return}if(a==='zoom-photo'){openPhotoZoom();return}if(a==='mod-post'){moderate(b.dataset.id,b.dataset.status);return}if(a==='feature-post'){featurePost(b.dataset.id,b.dataset.feature==='true');return}if(a==='publish'){publish();return}if(a==='replay'&&activePet){sound(activePet.species);return}if(a==='gallery-prev'){galleryPhoto(activePet,detailPhotoIndex-1);return}if(a==='gallery-next'){galleryPhoto(activePet,detailPhotoIndex+1);return}if(a==='gallery-pick'){galleryPhoto(activePet,Number(b.dataset.photoIndex)||0);return}if(a==='contact'){startContact();return}if(a==='report-post'){reportPet();return}if(a==='mod-reports'){moderationReports();return}if(a==='mod-report-update'){moderateReport(b.dataset.id,b.dataset.status);return}if(a==='share'&&activePet){share(activePet);return}if(a==='share-whatsapp'){shareWhatsapp();return}if(a==='share-copy'){copyShare();return}if(a==='share-native'){shareNative();return}if(a==='share-flyer'&&activePet){generateFlyer(activePet);return}if(a==='edit-post'){editPost(b.dataset.id);return}if(a==='delete-post'){deletePost(b.dataset.id);return}});
+overlay.addEventListener('click',async e=>{if(e.target?.id==='detail-current-photo'){if(Date.now()-lastDetailSwipe<500)return;openPhotoZoom();return}const b=e.target.closest('[data-action]');if(!b){if(e.target===overlay)close();return}const a=b.dataset.action;if(a==='close'){close();return}if(a==='auth-login'||a==='auth-register'||a==='auth-reset'){auth(a.replace('auth-',''));return}if(a==='logout'){if(isMod)await disableAdminPush(true);await db.auth.signOut();currentUser=null;isMod=false;accountHeader();close();toast('Cerraste sesión');return}if(a==='account'){accountMenu();return}if(a==='my-requests'){myRequests();return}if(a==='my-contact'){myContact();return}if(a==='notifications'){notifications();return}if(a==='open-notification'){openNotification(b.dataset.id);return}if(a==='mark-notices-read'){markNoticesRead();return}if(a==='my-posts'){myPosts();return}if(a==='my-favorites'){myFavorites();return}if(a==='favorite-open'){detail(pets.find(p=>p.id===b.dataset.id));return}if(a==='favorite-remove'){if(await toggleFavorite(b.dataset.id))myFavorites();return}if(a==='detail-favorite'&&activePet){toggleFavorite(activePet.id);return}if(a==='push-settings'){adminPushSettings();return}if(a==='push-enable'){activateAdminPush();return}if(a==='push-disable'){disableAdminPush();return}if(a==='push-test'){testAdminPush();return}if(a==='moderation'){moderation();return}if(a==='view-inbox'){inbox(b.dataset.id);return}if(a==='back-inbox'){inbox(currentInboxId);return}if(a==='accept-open'){openAccept(b.dataset.id);return}if(a==='confirm-accept'){answerRequest(b.dataset.id,'accepted');return}if(a==='share-my-contact'){promptShareContact(b.dataset.id,b.dataset.return);return}if(a==='confirm-share'){confirmShare(b.dataset.id);return}if(a==='revoke-share'){revokeShare(b.dataset.id,b.dataset.return);return}if(a==='answer-request'){answerRequest(b.dataset.id,b.dataset.status);return}if(a==='resolve-post'){resolvePost(b.dataset.id);return}if(a==='map-use-center'){mapUseCenter();return}if(a==='map-reset-center'){mapResetCenter();return}if(a==='zoom-photo'){openPhotoZoom();return}if(a==='mod-post'){moderate(b.dataset.id,b.dataset.status);return}if(a==='feature-post'){featurePost(b.dataset.id,b.dataset.feature==='true');return}if(a==='publish'){publish();return}if(a==='replay'&&activePet){sound(activePet.species);return}if(a==='gallery-prev'){galleryPhoto(activePet,detailPhotoIndex-1);return}if(a==='gallery-next'){galleryPhoto(activePet,detailPhotoIndex+1);return}if(a==='gallery-pick'){galleryPhoto(activePet,Number(b.dataset.photoIndex)||0);return}if(a==='contact'){startContact();return}if(a==='report-post'){reportPet();return}if(a==='mod-reports'){moderationReports();return}if(a==='mod-report-update'){moderateReport(b.dataset.id,b.dataset.status);return}if(a==='share'&&activePet){share(activePet);return}if(a==='share-whatsapp'){shareWhatsapp();return}if(a==='share-copy'){copyShare();return}if(a==='share-native'){shareNative();return}if(a==='share-flyer'&&activePet){generateFlyer(activePet);return}if(a==='edit-post'){editPost(b.dataset.id);return}if(a==='delete-post'){deletePost(b.dataset.id);return}});
 overlay.addEventListener('submit',e=>{e.preventDefault();const f=e.target;if(f.id==='auth-form'){doAuth(f);return}if(f.id==='my-contact-form'){saveMyContact(f);return}if(f.id==='pet-form'){submitPost(f);return}if(f.id==='request-form'){submitRequest(f);return}if(f.id==='report-pet-form'){submitPetReport(f);return}if(f.id==='edit-post-form'){savePost(f);return}});
 overlay.addEventListener('change',e=>{
  if(e.target.id==='photo-input'){previewFiles(e.target);return}
@@ -983,7 +1099,7 @@ overlay.addEventListener('click',e=>{if(e.target===overlay)close()});document.ad
 $('#search').addEventListener('input',e=>{query=e.target.value.toLowerCase().trim();render()});$('#zone').addEventListener('change',e=>{zone=e.target.value;render()});
 const hc=$('#hero-carousel');if(hc){hc.addEventListener('mouseenter',stopHero);hc.addEventListener('mouseleave',startHero);hc.addEventListener('focusin',stopHero);hc.addEventListener('focusout',startHero);let sx=0;hc.addEventListener('touchstart',e=>{sx=e.changedTouches[0]?.screenX||0},{passive:true});hc.addEventListener('touchend',e=>{const dx=(e.changedTouches[0]?.screenX||0)-sx;if(Math.abs(dx)>45){lastHeroSwipe=Date.now();goHero(dx>0?-1:1)}},{passive:true})}
 async function bootstrap(){if(!db){toast('Error: biblioteca de conexión no disponible');return}db.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='USER_UPDATED'){setTimeout(()=>syncSession(session).catch(()=>{}),0)}if(event==='PASSWORD_RECOVERY'){setTimeout(()=>passwordChange(),0)}});
-const {data}=await db.auth.getSession();await syncSession(data.session);await refreshPosts();if(deepLinkId){const sharedPet=pets.find(p=>p.id===deepLinkId);if(sharedPet)detail(sharedPet);else toast('Este aviso no está disponible o todavía no fue aprobado.')}if(window.location.hash.includes('error=')){toast('No se pudo completar la confirmación. Solicitá otro enlace.')}
+const {data}=await db.auth.getSession();await syncSession(data.session);await refreshPosts();if(deepLinkId){const sharedPet=pets.find(p=>p.id===deepLinkId);if(sharedPet)detail(sharedPet);else toast('Este aviso no está disponible o todavía no fue aprobado.')}if(window.location.hash.includes('error=')){toast('No se pudo completar la confirmación. Solicitá otro enlace.')}if(!currentUser&&new URLSearchParams(location.search).has('panel'))toast('Ingresá con tu cuenta administradora para revisar los avisos.')
 }
 function passwordChange(){show(`<div class="form-content"><h2>Elegí una contraseña nueva</h2><form id="new-pass-form"><label class="form-label">Nueva contraseña</label><input name="password" type="password" minlength="8" required autocomplete="new-password"><button type="submit" class="submit">Guardar contraseña</button></form></div>`,true)}
 overlay.addEventListener('submit',async e=>{if(e.target.id!=='new-pass-form')return;e.preventDefault();const pwd=new FormData(e.target).get('password');const {error}=await db.auth.updateUser({password:pwd});if(error){toast(error.message);return}close();toast('Contraseña actualizada correctamente')});
