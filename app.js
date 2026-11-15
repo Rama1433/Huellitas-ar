@@ -281,7 +281,7 @@ function editPost(id){
  selectedApprox=null;
  const count=p.photos?.length||0,remaining=Math.max(0,3-count);
  const currentImages=p.photos?.length?`<div class="selected-photo-grid saved-photos">${p.photos.map((url,i)=>`<div><span class="selected-photo ${i===0?'cover':''}"><img src="${safe(url)}" alt="Foto ${i+1}"></span><small>${i===0?'PORTADA':'FOTO '+(i+1)}</small></div>`).join('')}</div>`:'<p class="input-help">Sin fotos disponibles</p>';
- show(`<div class="form-content"><span class="modal-label">${icon('paw')} MI PUBLICACIÓN</span><h2>Editar ${safe(p.name)}</h2><p class="form-subtitle">Los cambios vuelven a revisión antes de mostrarse al público. La primera foto sigue siendo la portada.</p><form id="edit-post-form" data-id="${p.id}"><label class="form-label">Nombre</label><input name="name" maxlength="80" required value="${safe(p.name)}"><label class="form-label">Sexo</label><select name="sex" required><option value="male" ${p.sex==='male'?'selected':''}>Macho</option><option value="female" ${p.sex==='female'?'selected':''}>Hembra</option><option value="unknown" ${!p.sex||p.sex==='unknown'?'selected':''}>No sé / no pude identificarlo</option></select><label class="form-label">Localidad</label><select name="locality">${Object.keys(zoneCenters).map(z=>`<option ${p.locality===z?'selected':''}>${z}</option>`).join('')}</select>${p.category!=='adoption'?locationFields(p.category):''}<label class="form-label">Observaciones y señas particulares</label><textarea name="description" minlength="15" maxlength="3000" required>${safe(p.description)}</textarea><label class="form-label">Fotos actuales (${count}/3)</label>${currentImages}${remaining?`<label class="form-label">Agregar hasta ${remaining} foto${remaining===1?'':'s'} más</label><input id="photo-input" name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr-file-input"><label for="photo-input" class="file-picker">${icon('camera')} Agregar fotos</label><div class="upload-preview" id="upload-preview">${icon('camera')} No reemplaza la portada existente.</div>`:'<p class="input-help">Ya llegaste al máximo de tres fotos.</p>'}<div class="form-error" role="alert" hidden></div><button class="submit" type="submit">Guardar cambios</button></form><button class="menu-btn" data-action="my-posts">Volver</button></div>`,true);
+ show(`<div class="form-content"><span class="modal-label">${icon('paw')} MI PUBLICACIÓN</span><h2>Editar ${safe(p.name)}</h2><p class="form-subtitle">Los cambios vuelven a revisión antes de mostrarse al público. La primera foto sigue siendo la portada.</p><form id="edit-post-form" data-id="${p.id}"><label class="form-label">Nombre</label><input name="name" maxlength="80" required value="${safe(p.name)}"><label class="form-label">Sexo</label><select name="sex" required><option value="male" ${p.sex==='male'?'selected':''}>Macho</option><option value="female" ${p.sex==='female'?'selected':''}>Hembra</option><option value="unknown" ${!p.sex||p.sex==='unknown'?'selected':''}>No sé / no pude identificarlo</option></select><label class="form-label">Localidad</label><select name="locality">${Object.keys(zoneCenters).map(z=>`<option ${p.locality===z?'selected':''}>${z}</option>`).join('')}</select>${p.category!=='adoption'?locationFields(p.category):''}<label class="form-label">Observaciones y señas particulares</label><textarea name="description" minlength="15" maxlength="3000" required>${safe(p.description)}</textarea><label class="form-label">Fotos actuales (${count}/3)</label>${currentImages}${remaining?`<label class="form-label">Agregar hasta ${remaining} foto${remaining===1?'':'s'} más</label><p class="input-help">Fotos originales de hasta 50 MB, optimizadas antes de subir.</p><input id="photo-input" name="photos" type="file" accept="image/*,.heic,.heif" multiple class="sr-file-input"><label for="photo-input" class="file-picker">${icon('camera')} Agregar fotos</label><div class="upload-preview" id="upload-preview">${icon('camera')} No reemplaza la portada existente.</div>`:'<p class="input-help">Ya llegaste al máximo de tres fotos.</p>'}<div class="form-error" role="alert" hidden></div><button class="submit" type="submit">Guardar cambios</button></form><button class="menu-btn" data-action="my-posts">Volver</button></div>`,true);
  if(p.category!=='adoption'){
   const radius=$('#radius-select');if(radius)radius.value='400';
   setTimeout(()=>initPicker(p),50);
@@ -293,13 +293,13 @@ async function savePost(form){
  const count=p.photos?.length||0;
  if(!name||description.length<15||containsContact(description)){inlineError(form,'Revisá el nombre y la descripción. No incluyas datos de contacto.');return}
  if(files.length>3-count){inlineError(form,`Solo podés agregar ${3-count} foto${3-count===1?'':'s'} más.`);return}
- for(const file of files){if(file.size>20*1024*1024||!['image/jpeg','image/png','image/webp'].includes(file.type)){inlineError(form,'Cada foto debe ser JPG, PNG o WebP de hasta 20 MB. Huellitas las prepara sin metadatos GPS.');return}}
+ for(const file of files){if(file.size>PHOTO_ORIGINAL_MAX_BYTES||!supportedPhotoFile(file)){inlineError(form,'Elegí JPG, PNG, WebP o HEIC de hasta 50 MB. La foto se optimiza automáticamente para publicar.');return}}
  const sex=String(fd.get('sex')||'unknown');if(!['male','female','unknown'].includes(sex)){inlineError(form,'Seleccioná el sexo de la mascota.');return}const changes={name,description,sex,locality:String(fd.get('locality'))};
  if(p.category!=='adoption'&&selectedApprox){changes.approx_lat=selectedApprox.lat;changes.approx_lon=selectedApprox.lon;changes.search_radius_m=400}
  if(files.length>0&&['approved','rejected'].includes(p.status))changes.status='pending';
  const btn=form.querySelector('[type=submit]'),done=busy(btn,'Guardando...'),uploaded=[];
  try{
-  const prepared=await Promise.all(files.map(sanitizePhotoUpload));
+  const prepared=[];for(let n=0;n<files.length;n++){btn.innerHTML=`<span class="loading-mini" aria-hidden="true"></span> Preparando foto ${n+1} de ${files.length}...`;prepared.push(await sanitizePhotoUpload(files[n]))}
   const {error}=await db.from('hu_pet_posts').update(changes).eq('id',id).eq('owner_id',currentUser.id);if(error)throw error;
   const {data:existing,error:photoListError}=await db.from('hu_pet_photos').select('position').eq('post_id',id);if(photoListError)throw photoListError;
   const occupied=new Set((existing||[]).map(x=>x.position));
@@ -404,7 +404,7 @@ function locationFields(category='adoption'){
 function publish(){
  if(!currentUser){authIntent='publish';auth('register');return}
  selectedApprox=null;
- show(`<div class="form-content"><span class="modal-label">${icon('plus')} NUEVA PUBLICACIÓN</span><h2>Contanos su historia</h2><p class="form-subtitle">Subí hasta 3 fotos. La primera será la portada que aparece en los avisos y, si lo destacamos, en el banner. Elegí una foto clara de la mascota, sin capturas de pantalla, selfies ni logos.</p><form id="pet-form"><label class="form-label">Nombre de la mascota</label><input name="name" maxlength="80" required placeholder="Ej. Firulais"><label class="form-label">¿Qué necesitás publicar?</label><select name="status"><option value="adoption">En adopción</option><option value="lost">Se perdió mi mascota</option><option value="found">Encontré una mascota</option></select><label class="form-label">Especie</label><select name="species"><option value="dog">Perro</option><option value="cat">Gato</option></select><label class="form-label">Sexo</label><select name="sex" required><option value="" selected disabled>Seleccioná una opción</option><option value="male">Macho</option><option value="female">Hembra</option><option value="unknown">No sé / no pude identificarlo</option></select><label class="form-label">Localidad</label><select name="area"><option>San Miguel</option><option>Muñiz</option><option>Bella Vista</option><option>Los Polvorines</option><option>José C. Paz</option><option>Grand Bourg</option></select>${locationFields()}<label class="form-label">Fotos de la mascota (de 1 a 3)</label><input id="photo-input" name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple required class="sr-file-input"><label for="photo-input" class="file-picker">${icon('camera')} Seleccionar fotos</label><div class="upload-preview" id="upload-preview">${icon('camera')} Elegí hasta 3 fotos. La primera será la portada.</div><label class="form-label">Observaciones y señas particulares</label><textarea name="description" maxlength="3000" minlength="15" required placeholder="Color, tamaño, características, cómo es, dónde fue visto y cómo podemos ayudar..."></textarea><div class="form-error" hidden role="alert"></div><div class="form-note">${icon('shield')} La publicación y las fotos pasan por moderación. No incluyas teléfonos, correos, direcciones exactas ni documentos personales.</div><button type="submit" class="submit">Enviar a revisión</button></form></div>`,true)
+ show(`<div class="form-content"><span class="modal-label">${icon('plus')} NUEVA PUBLICACIÓN</span><h2>Contanos su historia</h2><p class="form-subtitle">Subí hasta 3 fotos. La primera será la portada que aparece en los avisos y, si lo destacamos, en el banner. Elegí una foto clara de la mascota, sin capturas de pantalla, selfies ni logos.</p><form id="pet-form"><label class="form-label">Nombre de la mascota</label><input name="name" maxlength="80" required placeholder="Ej. Firulais"><label class="form-label">¿Qué necesitás publicar?</label><select name="status"><option value="adoption">En adopción</option><option value="lost">Se perdió mi mascota</option><option value="found">Encontré una mascota</option></select><label class="form-label">Especie</label><select name="species"><option value="dog">Perro</option><option value="cat">Gato</option></select><label class="form-label">Sexo</label><select name="sex" required><option value="" selected disabled>Seleccioná una opción</option><option value="male">Macho</option><option value="female">Hembra</option><option value="unknown">No sé / no pude identificarlo</option></select><label class="form-label">Localidad</label><select name="area"><option>San Miguel</option><option>Muñiz</option><option>Bella Vista</option><option>Los Polvorines</option><option>José C. Paz</option><option>Grand Bourg</option></select>${locationFields()}<label class="form-label">Fotos de la mascota (de 1 a 3)</label><p class="input-help">Podés elegir fotos originales del iPhone (HEIC, JPG, PNG o WebP) de hasta 50 MB. Las optimizamos automáticamente antes de subirlas.</p><input id="photo-input" name="photos" type="file" accept="image/*,.heic,.heif" multiple required class="sr-file-input"><label for="photo-input" class="file-picker">${icon('camera')} Seleccionar fotos</label><div class="upload-preview" id="upload-preview">${icon('camera')} Elegí hasta 3 fotos. La primera será la portada.</div><label class="form-label">Observaciones y señas particulares</label><textarea name="description" maxlength="3000" minlength="15" required placeholder="Color, tamaño, características, cómo es, dónde fue visto y cómo podemos ayudar..."></textarea><div class="form-error" hidden role="alert"></div><div class="form-note">${icon('shield')} La publicación y las fotos pasan por moderación. No incluyas teléfonos, correos, direcciones exactas ni documentos personales.</div><button type="submit" class="submit">Enviar a revisión</button></form></div>`,true)
 }
 function updateLocationVisibility(){
  const form=$('#pet-form');if(!form)return;
@@ -418,25 +418,36 @@ function previewFiles(input){
  const files=Array.from(input.files||[]);
  if(files.length>3){input.value='';box.textContent='Elegí un máximo de 3 fotografías.';toast('Podés subir hasta 3 fotos por mascota.');return}
  box.innerHTML=files.length?`<div class="selected-photo-grid">${files.map((f,i)=>`<div><span class="selected-photo ${i===0?'cover':''}" data-preview="${i}">${icon('camera')}</span><small>${i===0?'PORTADA':'FOTO '+(i+1)}</small><span class="file-name">${safe(f.name)}</span></div>`).join('')}</div>`:`${icon('camera')} Elegí hasta 3 fotos. La primera será la portada.`;
- files.forEach((f,i)=>{if(!f.type.startsWith('image/'))return;const ref=URL.createObjectURL(f);const target=box.querySelector(`[data-preview="${i}"]`);if(target){const img=document.createElement('img');img.src=ref;img.alt='Vista previa';img.onload=()=>URL.revokeObjectURL(ref);target.appendChild(img)}else URL.revokeObjectURL(ref)})
+ files.forEach((f,i)=>{if(!supportedPhotoFile(f))return;const ref=URL.createObjectURL(f);const target=box.querySelector(`[data-preview="${i}"]`);if(target){const img=document.createElement('img');img.src=ref;img.alt='Vista previa';img.onload=()=>URL.revokeObjectURL(ref);img.onerror=()=>{URL.revokeObjectURL(ref);target.textContent='Vista previa no disponible'};target.appendChild(img)}else URL.revokeObjectURL(ref)})
 }
 
 /** Encode uploaded pictures as new JPEG pixels, discarding original EXIF/GPS metadata.
  * This protects normal site uploads; it is not a server-side inspection of direct API uploads.
  */
+const PHOTO_ORIGINAL_MAX_BYTES=50*1024*1024;
+function supportedPhotoFile(file){
+ const type=String(file?.type||'').toLowerCase(),name=String(file?.name||'').toLowerCase();
+ return ['image/jpeg','image/png','image/webp','image/heic','image/heif','image/heic-sequence','image/heif-sequence'].includes(type)
+   || (type==='' && /\.(jpe?g|png|webp|heic|heif)$/.test(name));
+}
 async function sanitizePhotoUpload(file){
- if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>20*1024*1024)throw new Error('Elegí una foto JPG, PNG o WebP de hasta 20 MB.');
+ if(!supportedPhotoFile(file)||file.size>PHOTO_ORIGINAL_MAX_BYTES)
+   throw new Error('Elegí una foto JPG, PNG, WebP o HEIC de hasta 50 MB. Los archivos RAW/DNG no están admitidos.');
  const ref=URL.createObjectURL(file);
  try{
   const img=new Image();img.decoding='async';img.src=ref;
-  if(typeof img.decode==='function')await img.decode();
-  else await new Promise((ok,fail)=>{img.onload=ok;img.onerror=fail});
+  try{
+   if(typeof img.decode==='function')await img.decode();
+   else await new Promise((ok,fail)=>{img.onload=ok;img.onerror=fail});
+  }catch(_){
+   throw new Error('No pudimos abrir esa imagen. Si es HEIC, probá compartirla como JPG desde Fotos.');
+  }
   const w=img.naturalWidth,h=img.naturalHeight;
-  if(!w||!h||w*h>50000000)throw new Error('No pudimos procesar la resolución de la foto.');
+  if(!w||!h||w*h>55000000)throw new Error('La imagen supera la resolución admitida. Probá otra foto.');
   const ratio=Math.min(1,2000/Math.max(w,h)),canvas=document.createElement('canvas');
   canvas.width=Math.max(1,Math.round(w*ratio));canvas.height=Math.max(1,Math.round(h*ratio));
   const ctx=canvas.getContext('2d',{alpha:false});
-  if(!ctx)throw new Error('No se pudo procesar la foto.');
+  if(!ctx)throw new Error('No se pudo optimizar la imagen en este dispositivo.');
   ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.drawImage(img,0,0,canvas.width,canvas.height);
   let blob=null;
@@ -445,7 +456,7 @@ async function sanitizePhotoUpload(file){
    if(blob&&blob.size<=5*1024*1024)break;
   }
   canvas.width=canvas.height=0;
-  if(!blob?.size||blob.size>5*1024*1024)throw new Error('La foto no se pudo optimizar a 5 MB. Probá otra.');
+  if(!blob?.size||blob.size>5*1024*1024)throw new Error('No se pudo optimizar esta foto. Elegí otra imagen.');
   const base=String(file.name||'mascota').replace(/\.[^.]+$/,'').replace(/[^a-z0-9_-]/gi,'_').slice(0,50)||'mascota';
   return new File([blob],base+'.jpg',{type:'image/jpeg',lastModified:Date.now()});
  }finally{URL.revokeObjectURL(ref)}
@@ -458,14 +469,14 @@ async function submitPost(form){
  if(!name||description.length<15){inlineError(form,'Completá el nombre y una descripción de al menos 15 caracteres.');return}
  if(containsContact(description)){inlineError(form,'No incluyas teléfonos o correos en la descripción.');return}
  if(files.length<1||files.length>3){inlineError(form,'Seleccioná entre 1 y 3 fotografías.');return}
- for(const file of files){if(file.size>20*1024*1024||!['image/jpeg','image/png','image/webp'].includes(file.type)){inlineError(form,'Cada foto debe ser JPG, PNG o WebP de hasta 20 MB. Huellitas las prepara sin metadatos GPS.');return}}
+ for(const file of files){if(file.size>PHOTO_ORIGINAL_MAX_BYTES||!supportedPhotoFile(file)){inlineError(form,'Elegí JPG, PNG, WebP o HEIC de hasta 50 MB. La foto se optimiza automáticamente para publicar.');return}}
  const area=type==='lost'||type==='found'?selectedApprox:null;
  const sex=String(fd.get('sex')||'');if(!['male','female','unknown'].includes(sex)){inlineError(form,'Seleccioná Macho, Hembra o No sé.');return}const row={owner_id:currentUser.id,name,species:String(fd.get('species')),sex,category:type,description,locality:String(fd.get('area'))};
  if(area){row.approx_lat=area.lat;row.approx_lon=area.lon;row.search_radius_m=400}
  const btn=form.querySelector('[type=submit]'),done=busy(btn,'Creando publicación...');let postId=null;const uploaded=[];
  try{
   btn.innerHTML='<span class="loading-mini" aria-hidden="true"></span> Protegiendo fotos...';
-  const prepared=await Promise.all(files.map(sanitizePhotoUpload));
+  const prepared=[];for(let n=0;n<files.length;n++){btn.innerHTML=`<span class="loading-mini" aria-hidden="true"></span> Preparando foto ${n+1} de ${files.length}...`;prepared.push(await sanitizePhotoUpload(files[n]))}
   const {data:post,error:insertError}=await db.from('hu_pet_posts').insert(row).select('id').single();if(insertError)throw insertError;postId=post.id;
   for(let i=0;i<files.length;i++){
     btn.innerHTML=`<span class="loading-mini" aria-hidden="true"></span> Subiendo foto ${i+1} de ${files.length}...`;
