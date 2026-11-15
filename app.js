@@ -122,7 +122,7 @@ async function attachPhotos(posts){
  }));return posts;
 }
 function fromRow(p){return {...p,status:p.category,zone:p.locality,desc:p.description,short:p.description?.slice(0,98)||'',age:p.age_text||'Sin indicar',species:p.species,sex:({male:'Macho',female:'Hembra',unknown:'Sin indicar'})[p.sex]||'Sin indicar'}}
-async function refreshPosts(){if(!db)return;loading=true;render();const {data,error}=await db.from('hu_pet_posts').select('id,owner_id,name,species,category,description,locality,age_text,sex,size,is_featured,created_at,outcome,approx_lat,approx_lon,search_radius_m').eq('status','approved').eq('outcome','active').order('created_at',{ascending:false}).limit(120);
+async function refreshPosts(){if(!db)return;loading=true;render();const selectCols='id,name,species,category,description,locality,age_text,sex,size,is_featured,created_at,outcome,approx_lat,approx_lon,search_radius_m'+(currentUser?',owner_id':'');const {data,error}=await db.from('hu_pet_posts').select(selectCols).eq('status','approved').eq('outcome','active').order('created_at',{ascending:false}).limit(120);
 if(error){loading=false;toast('No pudimos cargar las mascotas: '+error.message);return}
 const rows=(data||[]).map(fromRow);await attachPhotos(rows);pets=rows;featuredIds=rows.filter(p=>p.is_featured).map(p=>p.id);heroIndex=0;$('#hero-slides').innerHTML='';loading=false;render();renderHero();startHero()}
 function render(){if(loading){cards.innerHTML=`<div class="empty">${icon('search')}<p>Cargando publicaciones...</p></div>`;return}
@@ -293,19 +293,20 @@ async function savePost(form){
  const count=p.photos?.length||0;
  if(!name||description.length<15||containsContact(description)){inlineError(form,'Revisá el nombre y la descripción. No incluyas datos de contacto.');return}
  if(files.length>3-count){inlineError(form,`Solo podés agregar ${3-count} foto${3-count===1?'':'s'} más.`);return}
- for(const file of files){if(file.size>5*1024*1024||!['image/jpeg','image/png','image/webp'].includes(file.type)){inlineError(form,'Cada foto debe ser JPG, PNG o WebP de hasta 5 MB.');return}}
+ for(const file of files){if(file.size>20*1024*1024||!['image/jpeg','image/png','image/webp'].includes(file.type)){inlineError(form,'Cada foto debe ser JPG, PNG o WebP de hasta 20 MB. Huellitas las prepara sin metadatos GPS.');return}}
  const sex=String(fd.get('sex')||'unknown');if(!['male','female','unknown'].includes(sex)){inlineError(form,'Seleccioná el sexo de la mascota.');return}const changes={name,description,sex,locality:String(fd.get('locality'))};
  if(p.category!=='adoption'&&selectedApprox){changes.approx_lat=selectedApprox.lat;changes.approx_lon=selectedApprox.lon;changes.search_radius_m=400}
  if(files.length>0&&['approved','rejected'].includes(p.status))changes.status='pending';
  const btn=form.querySelector('[type=submit]'),done=busy(btn,'Guardando...'),uploaded=[];
  try{
+  const prepared=await Promise.all(files.map(sanitizePhotoUpload));
   const {error}=await db.from('hu_pet_posts').update(changes).eq('id',id).eq('owner_id',currentUser.id);if(error)throw error;
   const {data:existing,error:photoListError}=await db.from('hu_pet_photos').select('position').eq('post_id',id);if(photoListError)throw photoListError;
   const occupied=new Set((existing||[]).map(x=>x.position));
   for(let i=0;i<files.length;i++){
    btn.innerHTML=`<span class="loading-mini" aria-hidden="true"></span> Agregando foto ${i+1} de ${files.length}...`;
-   const file=files[i],position=[0,1,2].find(x=>!occupied.has(x));if(position==null)throw new Error('Ya se alcanzó el máximo de fotos.');occupied.add(position);
-   const ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg';const path=`${currentUser.id}/${id}/${crypto.randomUUID()}.${ext}`;
+   const file=prepared[i],position=[0,1,2].find(x=>!occupied.has(x));if(position==null)throw new Error('Ya se alcanzó el máximo de fotos.');occupied.add(position);
+   const path=`${currentUser.id}/${id}/${crypto.randomUUID()}.jpg`;
    const {error:up}=await db.storage.from(BUCKET).upload(path,file,{contentType:file.type,upsert:false});if(up)throw up;uploaded.push(path);
    const {error:insert}=await db.from('hu_pet_photos').insert({post_id:id,uploaded_by:currentUser.id,storage_path:path,position});if(insert)throw insert;
   }
@@ -313,7 +314,23 @@ async function savePost(form){
  }catch(e){if(uploaded.length)await db.storage.from(BUCKET).remove(uploaded);inlineError(form,shortError(e))}
  finally{done()}
 }
-async function deletePost(id){const p=mine.find(item=>item.id===id);if(!p||!currentUser)return;if(!confirm('¿Eliminar definitivamente la publicación de '+p.name+' y sus fotos? Esta acción no se puede deshacer.'))return;const {data:photos,error:listError}=await db.from('hu_pet_photos').select('storage_path').eq('post_id',id);if(listError){toast('No pudimos verificar las fotos: '+listError.message);return}const paths=(photos||[]).map(x=>x.storage_path);if(paths.length){const {error:removeError}=await db.storage.from(BUCKET).remove(paths);if(removeError){toast('No pudimos borrar la foto: '+removeError.message);return}}const {error}=await db.from('hu_pet_posts').delete().eq('id',id).eq('owner_id',currentUser.id);if(error){toast('No pudimos eliminar la publicación: '+error.message);return}toast('Publicación eliminada correctamente.');await refreshPosts();myPosts()}
+async function deletePost(id){
+ const p=mine.find(item=>item.id===id);
+ if(!p||!currentUser)return;
+ if(!confirm('¿Eliminar definitivamente la publicación de '+p.name+' y sus fotos? Esta acción no se puede deshacer.'))return;
+ const {data:photos,error:listError}=await db.from('hu_pet_photos').select('storage_path').eq('post_id',id);
+ if(listError){toast('No pudimos verificar las fotos: '+listError.message);return}
+ const paths=(photos||[]).map(x=>x.storage_path);
+ // Delete the row first so no approved post can lose its photos while remaining public.
+ const {error,count}=await db.from('hu_pet_posts').delete({count:'exact'}).eq('id',id).eq('owner_id',currentUser.id);
+ if(error||count!==1){toast('No se pudo eliminar la publicación. No se borraron las fotos.');return}
+ if(paths.length){
+  const {error:removeError}=await db.storage.from(BUCKET).remove(paths);
+  if(removeError)console.warn('Huellitas: orphaned media requires owner/admin cleanup',removeError.message);
+ }
+ toast('Publicación eliminada correctamente.');
+ await refreshPosts();await myPosts();
+}
 
 async function inbox(id){
  if(!currentUser)return;
@@ -403,6 +420,37 @@ function previewFiles(input){
  box.innerHTML=files.length?`<div class="selected-photo-grid">${files.map((f,i)=>`<div><span class="selected-photo ${i===0?'cover':''}" data-preview="${i}">${icon('camera')}</span><small>${i===0?'PORTADA':'FOTO '+(i+1)}</small><span class="file-name">${safe(f.name)}</span></div>`).join('')}</div>`:`${icon('camera')} Elegí hasta 3 fotos. La primera será la portada.`;
  files.forEach((f,i)=>{if(!f.type.startsWith('image/'))return;const ref=URL.createObjectURL(f);const target=box.querySelector(`[data-preview="${i}"]`);if(target){const img=document.createElement('img');img.src=ref;img.alt='Vista previa';img.onload=()=>URL.revokeObjectURL(ref);target.appendChild(img)}else URL.revokeObjectURL(ref)})
 }
+
+/** Encode uploaded pictures as new JPEG pixels, discarding original EXIF/GPS metadata.
+ * This protects normal site uploads; it is not a server-side inspection of direct API uploads.
+ */
+async function sanitizePhotoUpload(file){
+ if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>20*1024*1024)throw new Error('Elegí una foto JPG, PNG o WebP de hasta 20 MB.');
+ const ref=URL.createObjectURL(file);
+ try{
+  const img=new Image();img.decoding='async';img.src=ref;
+  if(typeof img.decode==='function')await img.decode();
+  else await new Promise((ok,fail)=>{img.onload=ok;img.onerror=fail});
+  const w=img.naturalWidth,h=img.naturalHeight;
+  if(!w||!h||w*h>50000000)throw new Error('No pudimos procesar la resolución de la foto.');
+  const ratio=Math.min(1,2000/Math.max(w,h)),canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(w*ratio));canvas.height=Math.max(1,Math.round(h*ratio));
+  const ctx=canvas.getContext('2d',{alpha:false});
+  if(!ctx)throw new Error('No se pudo procesar la foto.');
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  let blob=null;
+  for(const quality of [0.88,0.76,0.64]){
+   blob=await new Promise(ok=>canvas.toBlob(ok,'image/jpeg',quality));
+   if(blob&&blob.size<=5*1024*1024)break;
+  }
+  canvas.width=canvas.height=0;
+  if(!blob?.size||blob.size>5*1024*1024)throw new Error('La foto no se pudo optimizar a 5 MB. Probá otra.');
+  const base=String(file.name||'mascota').replace(/\.[^.]+$/,'').replace(/[^a-z0-9_-]/gi,'_').slice(0,50)||'mascota';
+  return new File([blob],base+'.jpg',{type:'image/jpeg',lastModified:Date.now()});
+ }finally{URL.revokeObjectURL(ref)}
+}
+
 function containsContact(text){return /\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b/i.test(text)||/(?:\+?54[\s.-]?)?(?:\(?0?11\)?|\(?0?2\d{2,3}\)?)[\s.-]?\d{3,4}[\s.-]?\d{4}/.test(text)}
 async function submitPost(form){
  if(!currentUser){auth('register');return}
@@ -410,16 +458,18 @@ async function submitPost(form){
  if(!name||description.length<15){inlineError(form,'Completá el nombre y una descripción de al menos 15 caracteres.');return}
  if(containsContact(description)){inlineError(form,'No incluyas teléfonos o correos en la descripción.');return}
  if(files.length<1||files.length>3){inlineError(form,'Seleccioná entre 1 y 3 fotografías.');return}
- for(const file of files){if(file.size>5*1024*1024||!['image/jpeg','image/png','image/webp'].includes(file.type)){inlineError(form,'Cada foto debe ser JPG, PNG o WebP de hasta 5 MB.');return}}
+ for(const file of files){if(file.size>20*1024*1024||!['image/jpeg','image/png','image/webp'].includes(file.type)){inlineError(form,'Cada foto debe ser JPG, PNG o WebP de hasta 20 MB. Huellitas las prepara sin metadatos GPS.');return}}
  const area=type==='lost'||type==='found'?selectedApprox:null;
  const sex=String(fd.get('sex')||'');if(!['male','female','unknown'].includes(sex)){inlineError(form,'Seleccioná Macho, Hembra o No sé.');return}const row={owner_id:currentUser.id,name,species:String(fd.get('species')),sex,category:type,description,locality:String(fd.get('area'))};
  if(area){row.approx_lat=area.lat;row.approx_lon=area.lon;row.search_radius_m=400}
  const btn=form.querySelector('[type=submit]'),done=busy(btn,'Creando publicación...');let postId=null;const uploaded=[];
  try{
+  btn.innerHTML='<span class="loading-mini" aria-hidden="true"></span> Protegiendo fotos...';
+  const prepared=await Promise.all(files.map(sanitizePhotoUpload));
   const {data:post,error:insertError}=await db.from('hu_pet_posts').insert(row).select('id').single();if(insertError)throw insertError;postId=post.id;
   for(let i=0;i<files.length;i++){
     btn.innerHTML=`<span class="loading-mini" aria-hidden="true"></span> Subiendo foto ${i+1} de ${files.length}...`;
-    const file=files[i],ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg',path=`${currentUser.id}/${postId}/${crypto.randomUUID()}.${ext}`;
+    const file=prepared[i],path=`${currentUser.id}/${postId}/${crypto.randomUUID()}.jpg`;
     const {error:uploadError}=await db.storage.from(BUCKET).upload(path,file,{cacheControl:'3600',contentType:file.type,upsert:false});if(uploadError)throw uploadError;uploaded.push(path);
     const {error:photoError}=await db.from('hu_pet_photos').insert({post_id:postId,uploaded_by:currentUser.id,storage_path:path,position:i});if(photoError)throw photoError;
   }
