@@ -124,10 +124,116 @@ async function attachPhotos(posts){
 function fromRow(p){return {...p,status:p.category,zone:p.locality,desc:p.description,short:p.description?.slice(0,98)||'',age:p.age_text||'',species:p.species,sex:({male:'Macho',female:'Hembra',unknown:'Sin indicar'})[p.sex]||'Sin indicar'}}
 async function refreshPosts(){if(!db)return;loading=true;render();const selectCols='id,name,species,category,description,locality,age_text,sex,size,is_featured,created_at,outcome,approx_lat,approx_lon,search_radius_m'+(currentUser?',owner_id':'');const {data,error}=await db.from('hu_pet_posts').select(selectCols).eq('status','approved').eq('outcome','active').order('created_at',{ascending:false}).limit(120);
 if(error){loading=false;toast('No pudimos cargar las mascotas: '+error.message);return}
-const rows=(data||[]).map(fromRow);await attachPhotos(rows);pets=rows;featuredIds=rows.filter(p=>p.is_featured).map(p=>p.id);heroIndex=0;$('#hero-slides').innerHTML='';loading=false;render();renderHero();startHero()}
+const rows=(data||[]).map(fromRow);await attachPhotos(rows);pets=rows;featuredIds=rows.filter(p=>p.is_featured).map(p=>p.id);heroIndex=0;$('#hero-slides').innerHTML='';loading=false;render();renderHero();startHero();await mergeGuestFavorites();refreshEngagement().catch(()=>{})}
+
+const GUEST_FAVORITES_KEY='huellitas_guest_favorites_v1';
+const FAVORITE_ID_PATTERN=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+let engagement=new Map(),favoriteBusy=new Set();
+function readGuestFavorites(){
+ try{
+  const arr=JSON.parse(localStorage.getItem(GUEST_FAVORITES_KEY)||'[]');
+  return new Set(Array.isArray(arr)?arr.filter(id=>typeof id==='string'&&FAVORITE_ID_PATTERN.test(id)).slice(-150):[]);
+ }catch(_){return new Set()}
+}
+function writeGuestFavorites(){
+ try{localStorage.setItem(GUEST_FAVORITES_KEY,JSON.stringify([...likes].slice(-150)))}catch(_){}
+}
+function statFor(id){return engagement.get(id)||{favorites_count:0,shares_count:0}}
+async function refreshEngagement(){
+ if(!db)return;
+ const {data,error}=await db.rpc('hu_public_pet_engagement');
+ if(error){console.warn('Contadores no disponibles',error.message);return}
+ engagement=new Map((data||[]).map(x=>[x.post_id,{
+  favorites_count:Number(x.favorites_count)||0,shares_count:Number(x.shares_count)||0
+ }]));
+ render();updateDetailEngagement();
+}
+async function mergeGuestFavorites(){
+ if(!currentUser||!pets.length)return;
+ const guest=readGuestFavorites();
+ const available=[...guest].filter(id=>pets.some(p=>p.id===id));
+ if(!available.length)return;
+ const uid=currentUser.id;
+ const {error}=await db.from('hu_pet_favorites').upsert(
+  available.map(post_id=>({user_id:uid,post_id})),
+  {onConflict:'user_id,post_id',ignoreDuplicates:true}
+ );
+ if(error){console.warn('No se pudieron sincronizar favoritos locales',error.message);return}
+ if(!currentUser||currentUser.id!==uid)return;
+ try{localStorage.removeItem(GUEST_FAVORITES_KEY)}catch(_){}
+ for(const id of available)likes.add(id);
+ render();
+ refreshEngagement().catch(()=>{});
+}
+async function loadFavoriteState(){
+ if(!currentUser){likes=readGuestFavorites();render();return}
+ const uid=currentUser.id;
+ const {data,error}=await db.from('hu_pet_favorites').select('post_id').eq('user_id',uid);
+ if(!currentUser||currentUser.id!==uid)return;
+ if(error){console.warn('No se pudieron recuperar favoritos',error.message);return}
+ likes=new Set((data||[]).map(x=>x.post_id));
+ render();
+ await mergeGuestFavorites();
+}
+async function toggleFavorite(id){
+ if(!id||favoriteBusy.has(id))return false;
+ if(!pets.some(p=>p.id===id)){toast('Esta publicación ya no está disponible.');return false}
+ favoriteBusy.add(id);
+ const removing=likes.has(id);
+ try{
+  if(currentUser){
+   const uid=currentUser.id;
+   const res=removing
+    ?await db.from('hu_pet_favorites').delete().eq('user_id',uid).eq('post_id',id)
+    :await db.from('hu_pet_favorites').insert({user_id:uid,post_id:id});
+   if(res.error&&!(res.error.code==='23505'&&!removing))throw res.error;
+   if(!currentUser||currentUser.id!==uid)return false;
+  }
+  if(removing)likes.delete(id);else likes.add(id);
+  if(!currentUser)writeGuestFavorites();
+  render();updateDetailEngagement();
+  toast(removing?'Quitada de favoritos':currentUser?'Guardada en Mis favoritos':'Guardada en este dispositivo');
+  if(currentUser)refreshEngagement().catch(()=>{});
+  return true;
+ }catch(e){toast('No pudimos guardar el favorito: '+(e?.message||'Reintentá'));return false}
+ finally{favoriteBusy.delete(id)}
+}
+function updateDetailEngagement(){
+ const p=activePet;if(!p)return;
+ const btn=$('#detail-favorite');
+ if(btn){btn.classList.toggle('selected',likes.has(p.id));btn.setAttribute('aria-pressed',String(likes.has(p.id)))}
+ const counts=statFor(p.id);
+ const fav=$('#detail-favorites-count');if(fav)fav.textContent=counts.favorites_count;
+ const share=$('#detail-shares-count');if(share)share.textContent=counts.shares_count;
+}
+function myFavorites(){
+ const found=pets.filter(p=>likes.has(p.id));
+ show('<div class="form-content"><span class="modal-label">'+icon('heart')+' HUELLITAS</span>'+
+  '<h2>Mis favoritos</h2><p class="form-subtitle">'+
+  (currentUser?'Tus favoritos se guardan en tu cuenta.':'Se guardan en este dispositivo. Registrate para conservarlos también en otros dispositivos.')+
+  '</p><div class="request-list">'+
+  (found.length?found.map(p=>'<article class="request-item favorite-item"><div class="fav-summary">'+
+   (p.img?'<img loading="lazy" alt="Foto de '+safe(p.name)+'" src="'+safe(p.img)+'">':'<span>'+icon('paw')+'</span>')+
+   '<div><b>'+safe(p.name)+'</b><small>'+safe(statusLabel[p.status])+' · '+safe(p.zone)+'</small></div></div>'+
+   '<div class="moderation-tools"><button data-action="favorite-open" data-id="'+safe(p.id)+'">Ver historia</button>'+
+   '<button data-action="favorite-remove" data-id="'+safe(p.id)+'">Quitar favorito</button></div></article>').join('')
+   :'<div class="request-item"><p>Todavía no guardaste mascotas favoritas. Tocá el corazón de una tarjeta para comenzar.</p></div>')+
+  '</div><button class="submit" data-action="close">Volver a las mascotas</button>'+
+  (currentUser?'<button class="menu-btn" data-action="account">Volver a mi cuenta</button>':'')+
+  '</div>',true);
+}
+async function recordShareAttempt(postId){
+ if(!currentUser||!postId)return;
+ try{
+  const {data,error}=await db.rpc('hu_record_pet_share',{p_post_id:postId});
+  if(error){console.warn('Conteo de compartidos no disponible',error.message);return}
+  if(data)await refreshEngagement();
+ }catch(e){console.warn('No se pudo contar un compartido',e?.message||e)}
+}
+
 function render(){if(loading){cards.innerHTML=`<div class="empty">${icon('search')}<p>Cargando publicaciones...</p></div>`;return}
 const matched=pets.filter(p=>(filter==='all'||petStatus(p)===filter)&&(!zone||zone===p.zone)&&(!query||(p.name+' '+p.zone+' '+p.short).toLowerCase().includes(query)));
-cards.innerHTML=matched.map(p=>`<article class="pet-card"><button class="pet-photo" data-action="pet-touch" data-id="${safe(p.id)}" aria-label="Conocer a ${safe(p.name)}: reproducir sonido y abrir ficha"><span class="pet-fallback">${icon(p.species==='cat'?'cat':'dog')}</span>${p.img?`<img src="${safe(p.img)}" alt="Fotografía de ${safe(p.name)}" loading="lazy">`:''}<span class="status ${safe(p.status)}">${statusLabel[p.status]}</span><span class="image-hint">${icon('volume')} Tocame</span><span class="sound-pop">${p.species==='cat'?'¡MIAU!':'¡GUAU!'}</span></button><div class="pet-card-body"><div class="pet-header"><h3>${safe(p.name)}</h3><span class="pet-species">${icon(p.species==='cat'?'cat':'dog')} ${p.species==='cat'?'Gato':'Perro'}</span></div><p class="pet-desc">${safe(p.short)}</p><div class="pet-card-chips">${p.zone?`<span class="pet-card-chip pet-card-chip--zone" title="${safe(p.zone)}">${icon('pin')}<span class="pet-card-chip-text">${safe(p.zone)}</span></span>`:''}${p.age&&p.age!=='Sin indicar'?`<span class="pet-card-chip">${safe(p.age)}</span>`:''}${p.sex&&p.sex!=='Sin indicar'?`<span class="pet-card-chip">${safe(p.sex)}</span>`:''}</div><div class="card-footer"><button class="card-link" data-action="detail" data-id="${safe(p.id)}">Conocer su historia ${icon('arrow')}</button><button class="heart-btn ${likes.has(p.id)?'selected':''}" data-action="like" data-id="${safe(p.id)}" aria-label="Guardar favorito">${icon('heart')}</button></div></div></article>`).join('')||`<div class="empty">${icon('paw')}<p>${query||zone||filter!=='all'?'No encontramos publicaciones con esos filtros. Probá otra búsqueda.':'Todavía no hay mascotas publicadas en esta zona. ¡Sé quien comparta la primera historia!'}<br>Solo se muestran avisos reales aprobados.</p><button class="primary" data-action="publish">${icon('plus')} Publicar mascota</button></div>`;
+cards.innerHTML=matched.map(p=>`<article class="pet-card"><button class="pet-photo" data-action="pet-touch" data-id="${safe(p.id)}" aria-label="Conocer a ${safe(p.name)}: reproducir sonido y abrir ficha"><span class="pet-fallback">${icon(p.species==='cat'?'cat':'dog')}</span>${p.img?`<img src="${safe(p.img)}" alt="Fotografía de ${safe(p.name)}" loading="lazy">`:''}<span class="status ${safe(p.status)}">${statusLabel[p.status]}</span><span class="image-hint">${icon('volume')} Tocame</span><span class="sound-pop">${p.species==='cat'?'¡MIAU!':'¡GUAU!'}</span></button><div class="pet-card-body"><div class="pet-header"><h3>${safe(p.name)}</h3><span class="pet-species">${icon(p.species==='cat'?'cat':'dog')} ${p.species==='cat'?'Gato':'Perro'}</span></div><p class="pet-desc">${safe(p.short)}</p><div class="pet-card-chips">${p.zone?`<span class="pet-card-chip pet-card-chip--zone" title="${safe(p.zone)}">${icon('pin')}<span class="pet-card-chip-text">${safe(p.zone)}</span></span>`:''}${p.age&&p.age!=='Sin indicar'?`<span class="pet-card-chip">${safe(p.age)}</span>`:''}${p.sex&&p.sex!=='Sin indicar'?`<span class="pet-card-chip">${safe(p.sex)}</span>`:''}</div><div class="pet-social"><span title="Favoritos de cuentas registradas">${icon('heart')} ${statFor(p.id).favorites_count}</span><button type="button" data-action="pet-share" data-id="${safe(p.id)}" aria-label="Compartir a ${safe(p.name)}, ${statFor(p.id).shares_count} acciones registradas" title="Acciones de compartir de cuentas registradas">${icon('share')} ${statFor(p.id).shares_count}</button></div><div class="card-footer"><button class="card-link" data-action="detail" data-id="${safe(p.id)}">Conocer su historia ${icon('arrow')}</button><button class="heart-btn ${likes.has(p.id)?'selected':''}" data-action="like" data-id="${safe(p.id)}" aria-label="${likes.has(p.id)?'Quitar de':'Guardar en'} favoritos" aria-pressed="${likes.has(p.id)}">${icon('heart')}</button></div></div></article>`).join('')||`<div class="empty">${icon('paw')}<p>${query||zone||filter!=='all'?'No encontramos publicaciones con esos filtros. Probá otra búsqueda.':'Todavía no hay mascotas publicadas en esta zona. ¡Sé quien comparta la primera historia!'}<br>Solo se muestran avisos reales aprobados.</p><button class="primary" data-action="publish">${icon('plus')} Publicar mascota</button></div>`;
  document.querySelectorAll('[data-filter]').forEach(b=>{const a=b.dataset.filter===filter;b.classList.toggle('active',a);b.setAttribute('aria-pressed',String(a))});if(overviewMap)drawOverviewCircles()}
 function featured(){const list=pets.filter(p=>featuredIds.includes(p.id));return list.length?list:photoFallbacks.map((p,i)=>({id:'illustration-'+i,name:p.label,img:p.img,demo:true}))}
 function renderHero(){const slides=$('#hero-slides'),dots=$('#hero-dots'),name=$('#hero-pet-name'),photo=$('#hero-photo');if(!slides||!dots||!name||!photo)return;const entries=featured();if(!entries.length)return;
@@ -195,7 +301,7 @@ function detail(p){
  const thumbs=multi?`<div class="photo-thumbs">${photos.map((url,i)=>`<button class="${i===0?'selected':''}" data-action="gallery-pick" data-photo-index="${i}" aria-label="Ver foto ${i+1}"><img src="${safe(url)}" alt="Foto ${i+1}"></button>`).join('')}</div>`:'';
  const isSearch=p.status==='lost'||p.status==='found';
  const area=(isSearch&&p.approx_lat!=null&&p.approx_lon!=null)?`<div class="map-section"><div class="private-label">${icon('pin')} Zona aproximada de búsqueda</div><p class="form-subtitle">Este círculo representa el área orientativa, no una dirección exacta. Tocá o mové el mapa para explorar la zona.</p><div class="pet-map" id="pet-map" role="img" aria-label="Mapa aproximado de ${safe(p.zone)}"></div><div class="map-note">Radio aproximado: ${radiusLabel(p.search_radius_m)} · ${safe(p.zone)}</div></div>`:(isSearch?`<div class="map-empty-note">Este aviso indica ${safe(p.zone)}, pero todavía no tiene delimitada una zona de búsqueda en el mapa.${currentUser?.id===p.owner_id?' Podés agregarla desde Editar publicación.':''}</div>`:'');
- show(`<div class="detail-layout"><div><div class="detail-photo">${p.img?`<span class="detail-photo-bg" aria-hidden="true"></span><img id="detail-current-photo" src="${safe(p.img)}" alt="Foto de ${safe(p.name)}" title="Tocá para ampliar" tabindex="0" role="button" aria-label="Ampliar foto de ${safe(p.name)}">`:`<span class="pet-fallback">${icon(p.species==='cat'?'cat':'dog')}</span>`}<span class="status ${safe(p.status)}">${statusLabel[p.status]}</span><button class="replay" data-action="replay">${icon('volume')} Escuchar de nuevo</button>${p.img?`<button type="button" class="detail-photo-expand" data-action="zoom-photo">${icon('search')} Ampliar foto</button>`:''}${gallery}</div>${thumbs}</div><div class="detail-content"><span class="modal-label">${icon(p.species==='cat'?'cat':'dog')} ${p.species==='cat'?'Gato':'Perro'} · ${statusLabel[p.status]}</span><h2>Hola, soy ${safe(p.name)}</h2><p class="detail-lead">Una historia que merece ser compartida.</p><div class="detail-chips"><span class="detail-chip">${icon('pin')} ${safe(p.zone)}</span>${p.age?`<span class="detail-chip">${safe(p.age)}</span>`:''}<span class="detail-chip">${safe(p.sex)}</span></div><p class="detail-description">${safe(p.desc)}</p>${area}<div class="private-gate"><div class="private-label">${icon('lock')} Contacto protegido</div><small>${currentUser?.id===p.owner_id?'Esta publicación es tuya. Podés gestionarla desde Mis publicaciones.':currentUser?'Podés enviar una solicitud privada al responsable.':'Para contactar al responsable necesitás registrarte o iniciar sesión.'} Los contactos se comparten únicamente con autorización.</small></div><div class="detail-actions">${currentUser?.id===p.owner_id?`<button data-action="my-posts">${icon('paw')} Administrar mi publicación</button>`:`<button data-action="contact">${icon(p.status==='adoption'?'heart':'shield')} ${requestLabel(p)}</button>`}<button class="share" data-action="share">${icon('share')} Compartir</button></div><button class="report-post-link" data-action="report-post">${icon('shield')} Reportar esta publicación</button></div></div>`,false);
+ show(`<div class="detail-layout"><div><div class="detail-photo">${p.img?`<span class="detail-photo-bg" aria-hidden="true"></span><img id="detail-current-photo" src="${safe(p.img)}" alt="Foto de ${safe(p.name)}" title="Tocá para ampliar" tabindex="0" role="button" aria-label="Ampliar foto de ${safe(p.name)}">`:`<span class="pet-fallback">${icon(p.species==='cat'?'cat':'dog')}</span>`}<span class="status ${safe(p.status)}">${statusLabel[p.status]}</span><button class="replay" data-action="replay">${icon('volume')} Escuchar de nuevo</button>${p.img?`<button type="button" class="detail-photo-expand" data-action="zoom-photo">${icon('search')} Ampliar foto</button>`:''}${gallery}</div>${thumbs}</div><div class="detail-content"><span class="modal-label">${icon(p.species==='cat'?'cat':'dog')} ${p.species==='cat'?'Gato':'Perro'} · ${statusLabel[p.status]}</span><h2>Hola, soy ${safe(p.name)}</h2><p class="detail-lead">Una historia que merece ser compartida.</p><div class="detail-chips"><span class="detail-chip">${icon('pin')} ${safe(p.zone)}</span>${p.age?`<span class="detail-chip">${safe(p.age)}</span>`:''}<span class="detail-chip">${safe(p.sex)}</span></div><div class="detail-social"><button id="detail-favorite" type="button" data-action="detail-favorite" class="${likes.has(p.id)?'selected':''}" aria-pressed="${likes.has(p.id)}" title="Guardar o quitar favorito">${icon('heart')} <span id="detail-favorites-count">${statFor(p.id).favorites_count}</span></button><span title="Acciones para compartir registradas">${icon('share')} <span id="detail-shares-count">${statFor(p.id).shares_count}</span></span></div><p class="detail-description">${safe(p.desc)}</p>${area}<div class="private-gate"><div class="private-label">${icon('lock')} Contacto protegido</div><small>${currentUser?.id===p.owner_id?'Esta publicación es tuya. Podés gestionarla desde Mis publicaciones.':currentUser?'Podés enviar una solicitud privada al responsable.':'Para contactar al responsable necesitás registrarte o iniciar sesión.'} Los contactos se comparten únicamente con autorización.</small></div><div class="detail-actions">${currentUser?.id===p.owner_id?`<button data-action="my-posts">${icon('paw')} Administrar mi publicación</button>`:`<button data-action="contact">${icon(p.status==='adoption'?'heart':'shield')} ${requestLabel(p)}</button>`}<button class="share" data-action="share">${icon('share')} Compartir</button></div><button class="report-post-link" data-action="report-post">${icon('shield')} Reportar esta publicación</button></div></div>`,false);
  if(p.img&&photos.length)galleryPhoto(p,0);
  if(p.photoPaths?.length&&(!p.photoSignedAt||Date.now()-p.photoSignedAt>120000))renewPetPhotos(p).catch(()=>{});
  if(area)setTimeout(()=>{if(activePet?.id===p.id&&overlay.classList.contains('open'))showAreaMap(p)},130);
@@ -263,7 +369,7 @@ async function doAuth(form){
 }
 async function syncSession(session){
  currentUser=session?.user||null;noticeCount=0;accountHeader();
- if(!currentUser){hideQuietNotice();isMod=false;notifRows=[];updateBell();return}
+ if(!currentUser){hideQuietNotice();isMod=false;notifRows=[];updateBell();await loadFavoriteState();return}
  const {data}=await db.from('hu_moderators').select('user_id').eq('user_id',currentUser.id).maybeSingle();isMod=Boolean(data);
  const {data:profile}=await db.from('hu_profiles').select('user_id').eq('user_id',currentUser.id).maybeSingle();
  if(!profile){const nm=String(currentUser.user_metadata?.display_name||currentUser.email?.split('@')[0]||'Usuario').slice(0,80);if(nm.length>=2)await db.from('hu_profiles').insert({user_id:currentUser.id,display_name:nm})}
@@ -273,9 +379,10 @@ async function syncSession(session){
   if(!contact)await db.from('hu_private_contacts').insert({user_id:currentUser.id,whatsapp:phone});
  }
  await loadNotifications();
+ await loadFavoriteState();
 }
 function accountMenu(){if(!currentUser){auth();return}
- show(`<div class="form-content"><span class="modal-label">${icon('user')} MI CUENTA</span><h2>¡Hola!</h2><p class="form-subtitle">${safe(currentUser.email)}</p><div class="request-list"><button class="menu-btn" data-action="notifications">${icon('bell')} Notificaciones ${noticeCount?`<strong class="pill-count">${noticeCount}</strong>`:''}</button><button class="menu-btn" data-action="my-posts">${icon('paw')} Mis publicaciones</button><button class="menu-btn" data-action="my-requests">${icon('heart')} Mis solicitudes</button><button class="menu-btn" data-action="my-contact">${icon('user')} Mi contacto privado</button>${isMod?`<button class="menu-btn" data-action="moderation">${icon('shield')} Panel de moderación</button>`:''}<button class="menu-btn" data-action="publish">${icon('plus')} Publicar mascota</button><button class="menu-btn" data-action="logout">Cerrar sesión</button></div><p class="form-caption">Nadie ve tus datos de contacto a menos que decidas compartirlos con una persona tras aceptar su solicitud.</p></div>`,true)
+ show(`<div class="form-content"><span class="modal-label">${icon('user')} MI CUENTA</span><h2>¡Hola!</h2><p class="form-subtitle">${safe(currentUser.email)}</p><div class="request-list"><button class="menu-btn" data-action="notifications">${icon('bell')} Notificaciones ${noticeCount?`<strong class="pill-count">${noticeCount}</strong>`:''}</button><button class="menu-btn" data-action="my-posts">${icon('paw')} Mis publicaciones</button><button class="menu-btn" data-action="my-favorites">${icon('heart')} Mis favoritos</button><button class="menu-btn" data-action="my-requests">${icon('heart')} Mis solicitudes</button><button class="menu-btn" data-action="my-contact">${icon('user')} Mi contacto privado</button>${isMod?`<button class="menu-btn" data-action="moderation">${icon('shield')} Panel de moderación</button>`:''}<button class="menu-btn" data-action="publish">${icon('plus')} Publicar mascota</button><button class="menu-btn" data-action="logout">Cerrar sesión</button></div><p class="form-caption">Nadie ve tus datos de contacto a menos que decidas compartirlos con una persona tras aceptar su solicitud.</p></div>`,true)
 }
 async function myContact(){
  if(!currentUser){auth();return}
@@ -608,10 +715,10 @@ async function moderateReport(id,status){
  toast('Estado del reporte actualizado');await moderationReports();
 }
 
-function share(p){if(!p)return;activePet=p;show(`<div class="form-content"><span class="modal-label">${icon('share')} COMPARTIR HUELLITAS</span><h2>Ayudá a ${safe(p.name)}</h2><p>Compartí su historia para que llegue a más personas.</p><div class="request-summary">${p.img?`<img src="${safe(p.img)}" alt="${safe(p.name)}">`:icon('paw')}<div><strong>${safe(p.name)}</strong><span>${statusLabel[p.status]} · ${safe(p.zone)}</span></div></div><div class="share-actions"><button class="menu-btn" data-action="share-whatsapp">Compartir por WhatsApp ${icon('arrow')}</button><button class="menu-btn" data-action="share-copy">Copiar enlace individual ${icon('arrow')}</button><button class="menu-btn" data-action="share-flyer">Crear imagen para Instagram ${icon('arrow')}</button><button class="menu-btn" data-action="share-native">Más opciones para compartir ${icon('share')}</button></div><p class="form-caption">Para Instagram generamos una imagen vertical descargable. Los enlaces individuales solo abren avisos aprobados.</p></div>`,true)}
-function shareWhatsapp(){if(!activePet)return;window.open('https://wa.me/?text='+encodeURIComponent(shareText(activePet)),'_blank','noopener,noreferrer')}
-async function copyShare(){if(!activePet)return;try{await navigator.clipboard.writeText(petShareUrl(activePet));toast('Enlace de esta mascota copiado')}catch(e){toast('No se pudo copiar el enlace en este navegador')}}
-async function shareNative(){if(!activePet)return;const p=activePet;if(navigator.share){try{await navigator.share({title:`Huellitas — ${p.name}`,text:shareText(p),url:petShareUrl(p)})}catch(e){if(e.name!=='AbortError')toast('No se pudo compartir')}}else await copyShare()}
+function share(p){if(!p)return;activePet=p;show(`<div class="form-content"><span class="modal-label">${icon('share')} COMPARTIR HUELLITAS</span><h2>Ayudá a ${safe(p.name)}</h2><p>Compartí su historia para que llegue a más personas.</p><div class="request-summary">${p.img?`<img src="${safe(p.img)}" alt="${safe(p.name)}">`:icon('paw')}<div><strong>${safe(p.name)}</strong><span>${statusLabel[p.status]} · ${safe(p.zone)}</span></div></div><div class="share-actions"><button class="menu-btn" data-action="share-whatsapp">Compartir por WhatsApp ${icon('arrow')}</button><button class="menu-btn" data-action="share-copy">Copiar enlace individual ${icon('arrow')}</button><button class="menu-btn" data-action="share-flyer">Crear imagen para Instagram ${icon('arrow')}</button><button class="menu-btn" data-action="share-native">Más opciones para compartir ${icon('share')}</button></div><p class="form-caption">Para Instagram generamos una imagen vertical descargable. Los enlaces individuales solo abren avisos aprobados. El contador registra acciones únicas de compartir de cuentas registradas, no envíos confirmados.</p></div>`,true)}
+function shareWhatsapp(){if(!activePet)return;const id=activePet.id;window.open('https://wa.me/?text='+encodeURIComponent(shareText(activePet)),'_blank','noopener,noreferrer');recordShareAttempt(id)}
+async function copyShare(){if(!activePet)return;try{await navigator.clipboard.writeText(petShareUrl(activePet));recordShareAttempt(activePet.id);toast('Enlace de esta mascota copiado')}catch(e){toast('No se pudo copiar el enlace en este navegador')}}
+async function shareNative(){if(!activePet)return;const p=activePet;if(navigator.share){try{await navigator.share({title:`Huellitas — ${p.name}`,text:shareText(p),url:petShareUrl(p)});recordShareAttempt(p.id)}catch(e){if(e.name!=='AbortError')toast('No se pudo compartir')}}else await copyShare()}
 async function loadFlyerImage(url){if(!url)return null;try{const img=new Image();img.crossOrigin='anonymous';img.src=url;await img.decode();return img}catch(e){console.warn('Foto para flyer no disponible, se usará diseño alternativo');return null}}
 function fitText(ctx,str,maxWidth,size=75){let fontSize=size;while(fontSize>37){ctx.font=`900 ${fontSize}px system-ui,sans-serif`;if(ctx.measureText(str).width<=maxWidth)break;fontSize-=2}return fontSize}
 async function generateFlyer(p){const w=1080,h=1920,canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');if(!ctx){toast('No se pudo generar la imagen');return}ctx.fillStyle='#174b39';ctx.fillRect(0,0,w,h);ctx.fillStyle='#f5d69a';ctx.font='900 76px system-ui,sans-serif';ctx.fillText('Huellitas.',70,130);ctx.fillStyle='#ffffff';ctx.font='500 30px system-ui,sans-serif';ctx.fillText('CONECTAMOS HISTORIAS',74,175);
@@ -811,8 +918,8 @@ async function markNoticesRead(){
  if(error){toast(shortError(error));return}await notifications();
 }
 
-root.addEventListener('click',e=>{const b=e.target.closest('[data-action],[data-filter]');if(!b)return;if(b.dataset.filter){filter=b.dataset.filter;render();return}const a=b.dataset.action;if(a==='explore'){$('#mascotas').scrollIntoView({behavior:'smooth'});return}if(a==='notifications'){notifications();return}if(a==='toggle-overview-map'){toggleOverviewMap();return}if(a==='publish'){publish();return}if(a==='login'){accountMenu();return}if(a==='toggle-sound'){soundOn=!soundOn;b.innerHTML=icon(soundOn?'volume':'mute')+`<span>Sonidos ${soundOn?'activados':'silenciados'}</span>`;b.setAttribute('aria-pressed',String(soundOn));return}if(a==='hero-open'){if(Date.now()-lastHeroSwipe<450)return;openHero();return}if(a==='hero-dot'){heroIndex=Number(b.dataset.index)||0;renderHero();startHero();return}if(a==='pet-touch'){touchPet(b.dataset.id,b);return}if(a==='detail'){detail(pets.find(p=>p.id===b.dataset.id));return}if(a==='like'){const id=b.dataset.id;likes.has(id)?likes.delete(id):likes.add(id);render();toast(likes.has(id)?'Guardada como favorita en este dispositivo':'Quitada de favoritos');return}});
-overlay.addEventListener('click',async e=>{if(e.target?.id==='detail-current-photo'){openPhotoZoom();return}const b=e.target.closest('[data-action]');if(!b){if(e.target===overlay)close();return}const a=b.dataset.action;if(a==='close'){close();return}if(a==='auth-login'||a==='auth-register'||a==='auth-reset'){auth(a.replace('auth-',''));return}if(a==='logout'){await db.auth.signOut();currentUser=null;isMod=false;accountHeader();close();toast('Cerraste sesión');return}if(a==='account'){accountMenu();return}if(a==='my-requests'){myRequests();return}if(a==='my-contact'){myContact();return}if(a==='notifications'){notifications();return}if(a==='open-notification'){openNotification(b.dataset.id);return}if(a==='mark-notices-read'){markNoticesRead();return}if(a==='my-posts'){myPosts();return}if(a==='moderation'){moderation();return}if(a==='view-inbox'){inbox(b.dataset.id);return}if(a==='back-inbox'){inbox(currentInboxId);return}if(a==='accept-open'){openAccept(b.dataset.id);return}if(a==='confirm-accept'){answerRequest(b.dataset.id,'accepted');return}if(a==='share-my-contact'){promptShareContact(b.dataset.id,b.dataset.return);return}if(a==='confirm-share'){confirmShare(b.dataset.id);return}if(a==='revoke-share'){revokeShare(b.dataset.id,b.dataset.return);return}if(a==='answer-request'){answerRequest(b.dataset.id,b.dataset.status);return}if(a==='resolve-post'){resolvePost(b.dataset.id);return}if(a==='map-use-center'){mapUseCenter();return}if(a==='map-reset-center'){mapResetCenter();return}if(a==='zoom-photo'){openPhotoZoom();return}if(a==='mod-post'){moderate(b.dataset.id,b.dataset.status);return}if(a==='feature-post'){featurePost(b.dataset.id,b.dataset.feature==='true');return}if(a==='publish'){publish();return}if(a==='replay'&&activePet){sound(activePet.species);return}if(a==='gallery-prev'){galleryPhoto(activePet,detailPhotoIndex-1);return}if(a==='gallery-next'){galleryPhoto(activePet,detailPhotoIndex+1);return}if(a==='gallery-pick'){galleryPhoto(activePet,Number(b.dataset.photoIndex)||0);return}if(a==='contact'){startContact();return}if(a==='report-post'){reportPet();return}if(a==='mod-reports'){moderationReports();return}if(a==='mod-report-update'){moderateReport(b.dataset.id,b.dataset.status);return}if(a==='share'&&activePet){share(activePet);return}if(a==='share-whatsapp'){shareWhatsapp();return}if(a==='share-copy'){copyShare();return}if(a==='share-native'){shareNative();return}if(a==='share-flyer'&&activePet){generateFlyer(activePet);return}if(a==='edit-post'){editPost(b.dataset.id);return}if(a==='delete-post'){deletePost(b.dataset.id);return}});
+root.addEventListener('click',e=>{const b=e.target.closest('[data-action],[data-filter]');if(!b)return;if(b.dataset.filter){filter=b.dataset.filter;render();return}const a=b.dataset.action;if(a==='explore'){$('#mascotas').scrollIntoView({behavior:'smooth'});return}if(a==='notifications'){notifications();return}if(a==='toggle-overview-map'){toggleOverviewMap();return}if(a==='publish'){publish();return}if(a==='login'){accountMenu();return}if(a==='toggle-sound'){soundOn=!soundOn;b.innerHTML=icon(soundOn?'volume':'mute')+`<span>Sonidos ${soundOn?'activados':'silenciados'}</span>`;b.setAttribute('aria-pressed',String(soundOn));return}if(a==='hero-open'){if(Date.now()-lastHeroSwipe<450)return;openHero();return}if(a==='hero-dot'){heroIndex=Number(b.dataset.index)||0;renderHero();startHero();return}if(a==='pet-touch'){touchPet(b.dataset.id,b);return}if(a==='detail'){detail(pets.find(p=>p.id===b.dataset.id));return}if(a==='pet-share'){share(pets.find(p=>p.id===b.dataset.id));return}if(a==='my-favorites'){myFavorites();return}if(a==='like'){toggleFavorite(b.dataset.id);return}});
+overlay.addEventListener('click',async e=>{if(e.target?.id==='detail-current-photo'){openPhotoZoom();return}const b=e.target.closest('[data-action]');if(!b){if(e.target===overlay)close();return}const a=b.dataset.action;if(a==='close'){close();return}if(a==='auth-login'||a==='auth-register'||a==='auth-reset'){auth(a.replace('auth-',''));return}if(a==='logout'){await db.auth.signOut();currentUser=null;isMod=false;accountHeader();close();toast('Cerraste sesión');return}if(a==='account'){accountMenu();return}if(a==='my-requests'){myRequests();return}if(a==='my-contact'){myContact();return}if(a==='notifications'){notifications();return}if(a==='open-notification'){openNotification(b.dataset.id);return}if(a==='mark-notices-read'){markNoticesRead();return}if(a==='my-posts'){myPosts();return}if(a==='my-favorites'){myFavorites();return}if(a==='favorite-open'){detail(pets.find(p=>p.id===b.dataset.id));return}if(a==='favorite-remove'){if(await toggleFavorite(b.dataset.id))myFavorites();return}if(a==='detail-favorite'&&activePet){toggleFavorite(activePet.id);return}if(a==='moderation'){moderation();return}if(a==='view-inbox'){inbox(b.dataset.id);return}if(a==='back-inbox'){inbox(currentInboxId);return}if(a==='accept-open'){openAccept(b.dataset.id);return}if(a==='confirm-accept'){answerRequest(b.dataset.id,'accepted');return}if(a==='share-my-contact'){promptShareContact(b.dataset.id,b.dataset.return);return}if(a==='confirm-share'){confirmShare(b.dataset.id);return}if(a==='revoke-share'){revokeShare(b.dataset.id,b.dataset.return);return}if(a==='answer-request'){answerRequest(b.dataset.id,b.dataset.status);return}if(a==='resolve-post'){resolvePost(b.dataset.id);return}if(a==='map-use-center'){mapUseCenter();return}if(a==='map-reset-center'){mapResetCenter();return}if(a==='zoom-photo'){openPhotoZoom();return}if(a==='mod-post'){moderate(b.dataset.id,b.dataset.status);return}if(a==='feature-post'){featurePost(b.dataset.id,b.dataset.feature==='true');return}if(a==='publish'){publish();return}if(a==='replay'&&activePet){sound(activePet.species);return}if(a==='gallery-prev'){galleryPhoto(activePet,detailPhotoIndex-1);return}if(a==='gallery-next'){galleryPhoto(activePet,detailPhotoIndex+1);return}if(a==='gallery-pick'){galleryPhoto(activePet,Number(b.dataset.photoIndex)||0);return}if(a==='contact'){startContact();return}if(a==='report-post'){reportPet();return}if(a==='mod-reports'){moderationReports();return}if(a==='mod-report-update'){moderateReport(b.dataset.id,b.dataset.status);return}if(a==='share'&&activePet){share(activePet);return}if(a==='share-whatsapp'){shareWhatsapp();return}if(a==='share-copy'){copyShare();return}if(a==='share-native'){shareNative();return}if(a==='share-flyer'&&activePet){generateFlyer(activePet);return}if(a==='edit-post'){editPost(b.dataset.id);return}if(a==='delete-post'){deletePost(b.dataset.id);return}});
 overlay.addEventListener('submit',e=>{e.preventDefault();const f=e.target;if(f.id==='auth-form'){doAuth(f);return}if(f.id==='my-contact-form'){saveMyContact(f);return}if(f.id==='pet-form'){submitPost(f);return}if(f.id==='request-form'){submitRequest(f);return}if(f.id==='report-pet-form'){submitPetReport(f);return}if(f.id==='edit-post-form'){savePost(f);return}});
 overlay.addEventListener('change',e=>{
  if(e.target.id==='photo-input'){previewFiles(e.target);return}
