@@ -1109,15 +1109,23 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&currentUs
 setInterval(()=>{if(currentUser&&!document.hidden)loadNotifications()},25000);
 bootstrap().catch(err=>toast('No se pudo conectar con Supabase: '+err.message));
 
-function showCommunityNotice(){
- const disclaimer=document.getElementById('community-notice');
- if(!disclaimer || disclaimer.open)return;
- try{disclaimer.showModal()}catch(_){disclaimer.setAttribute('open','')}
-}
+const COMMUNITY_NOTICE_KEY='huellitas_community_rules_ack_v1';
 const communityNotice=document.getElementById('community-notice');
+function communityNoticeAccepted(){
+ try{return localStorage.getItem(COMMUNITY_NOTICE_KEY)==='accepted'}catch(_){return false}
+}
+function showCommunityNotice(force=false){
+ if(!communityNotice || communityNotice.open || (!force&&communityNoticeAccepted()))return;
+ try{communityNotice.showModal()}catch(_){communityNotice.setAttribute('open','')}
+}
 if(communityNotice){
- communityNotice.querySelector('#community-notice-accept')?.addEventListener('click',()=>communityNotice.close());
- // Every fresh navigation/reload is a new visit; do not interrupt tab switches or internal actions.
+ communityNotice.querySelector('#community-notice-accept')?.addEventListener('click',()=>{
+  // Remember only an explicit acknowledgment, not an accidental dismissal.
+  try{localStorage.setItem(COMMUNITY_NOTICE_KEY,'accepted')}catch(_){}
+  communityNotice.close();
+ });
+ document.getElementById('community-rules-link')?.addEventListener('click',()=>showCommunityNotice(true));
+ // Return visitors who already acknowledged the rules are not interrupted.
  showCommunityNotice();
 }
 
