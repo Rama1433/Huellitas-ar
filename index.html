@@ -221,6 +221,35 @@
 .pet-social{display:flex;align-items:center;justify-content:flex-end;gap:12px;color:#6d8d79;font-size:10px;margin-top:8px;min-height:16px}.pet-social span,.pet-social button{display:inline-flex;align-items:center;gap:4px}.pet-social button{background:none;border:0;color:inherit;font:inherit;padding:2px;cursor:pointer}.pet-social svg{width:13px;height:13px}.detail-social{display:flex;align-items:center;gap:12px;color:#5b7d67;font-size:12px;margin:0 0 9px}.detail-social span,.detail-social button{display:inline-flex;align-items:center;gap:5px}.detail-social button{border:0;background:#edf5eb;color:inherit;padding:7px 9px;border-radius:9px;font:inherit;cursor:pointer}.detail-social button.selected{color:#b95459;background:#fff1f1}.detail-social button.selected svg{fill:currentColor}.detail-social svg{width:15px;height:15px}.overview-actions{display:flex;align-items:stretch;gap:8px;max-width:100%;min-width:0}.overview-actions>.soft-action{flex:0 1 auto;min-width:0;white-space:normal;line-height:1.25}.overview-actions>.favorites-quick{flex:0 0 auto;margin-left:0;justify-content:center;white-space:nowrap;line-height:1.25}.overview-toolbar>span{flex-basis:100%;width:100%}@media(max-width:390px){.overview-actions{gap:6px}.overview-actions>.soft-action,.overview-actions>.favorites-quick{font-size:10px;padding:9px 8px}}.favorites-quick{display:inline-flex;align-items:center;gap:5px;margin-left:auto;border:1px solid #dce8da;background:#f0f7ef;color:#245b43;border-radius:10px;font-size:11px;font-weight:750;white-space:nowrap;padding:8px;cursor:pointer}.favorites-quick svg{width:14px;height:14px}.fav-summary{display:flex;align-items:center;gap:12px;margin-bottom:9px}.fav-summary img{width:60px;height:60px;object-fit:cover;border-radius:11px;flex:none}.fav-summary div{min-width:0}.fav-summary small{display:block;margin-top:4px;color:#72917e}@media(max-width:620px){.helper{flex-wrap:wrap}.favorites-quick{margin-left:0}.pet-social{gap:10px}}
 .photo-zoom-photo,.detail-photo>img{touch-action:pan-y;-webkit-user-drag:none;user-select:none}
 .push-status{display:flex;gap:9px;align-items:center;padding:12px 14px;margin:12px 0;border-radius:12px;background:#edf5ec;color:#2b5a40;font-weight:750;font-size:12px}.push-status svg{width:18px;height:18px}.push-instructions{background:#fff8e8;border:1px solid #f0dfba;border-radius:12px;padding:12px 13px;color:#735e35!important;font-size:12px;line-height:1.6}
+
+/* Public community disclaimer: shown only when a page visit starts. */
+.community-notice{
+ box-sizing:border-box;
+ width:min(92vw,440px);max-height:calc(100dvh - 32px);overflow-y:auto;
+ border:1px solid #dce9de;border-radius:22px;background:#fffdf8;color:#214b39;
+ box-shadow:0 22px 75px #061e16aa;padding:26px 25px 24px;
+ text-align:left;line-height:1.45;
+}
+.community-notice::backdrop{background:rgba(4,29,21,.72);backdrop-filter:blur(4px)}
+.community-notice-icon{
+ display:grid;place-items:center;width:55px;height:55px;margin:0 0 16px;
+ border-radius:16px;background:#174b39;color:#f1d392;
+}
+.community-notice-icon svg{width:32px;height:32px;fill:currentColor}
+.community-notice-eyebrow{display:block;color:#628a70;font-size:10px;letter-spacing:1.1px;font-weight:800}
+.community-notice h2{margin:8px 0 12px;font-size:25px;line-height:1.16;color:#174b39}
+.community-notice p{margin:0 0 14px;font-size:14px;color:#506d5a;line-height:1.55}
+.community-notice-warning{margin:17px 0 14px;background:#f0f7ef;border:1px solid #d8e9d9;border-radius:14px;padding:14px 15px}
+.community-notice-warning strong{color:#174b39;font-size:14px}
+.community-notice-warning p{margin:6px 0 0;font-size:13px}
+.community-notice-report{font-size:12px!important}
+.community-notice-accept{
+ width:100%;min-height:46px;margin-top:3px;padding:12px 16px;
+ border:0;border-radius:12px;background:#245b43;color:#fff;font-size:15px;
+ font-weight:800;cursor:pointer
+}
+.community-notice-accept:focus-visible{outline:3px solid #d9bd78;outline-offset:3px}
+@media(max-width:400px){.community-notice{padding:23px 19px}.community-notice h2{font-size:22px}}
 </style></head><body>
 <svg style="display:none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <symbol id="i-paw" viewBox="0 0 24 24"><ellipse cx="12" cy="16.6" rx="6.1" ry="4.1"/><ellipse cx="5" cy="9.8" rx="1.6" ry="2.3" transform="rotate(-15 5 9.8)"/><ellipse cx="9.2" cy="6.5" rx="1.5" ry="2.3" transform="rotate(-8 9.2 6.5)"/><ellipse cx="14.8" cy="6.5" rx="1.5" ry="2.3" transform="rotate(8 14.8 6.5)"/><ellipse cx="19" cy="9.8" rx="1.6" ry="2.3" transform="rotate(15 19 9.8)"/></symbol>
@@ -261,8 +290,21 @@
 <div class="overview-toolbar"><div class="overview-actions"><button class="soft-action" id="overview-map-toggle" data-action="toggle-overview-map"><svg><use href="#i-pin"/></svg> Ver mapa de búsquedas</button><button type="button" class="favorites-quick" data-action="my-favorites"><svg><use href="#i-heart"/></svg> Mis favoritos</button></div><span>Solo zonas aproximadas de mascotas perdidas o encontradas.</span></div><div id="overview-map-section" class="overview-map-section" hidden><div id="overview-map" class="pet-map" aria-label="Zonas de búsqueda de mascotas"></div><small>Tocá un punto para conocer la historia de esa mascota. Los puntos son aproximados. © OpenStreetMap.</small><p id="overview-map-help" class="map-empty-note" hidden>Aún no hay zonas de búsqueda aprobadas. Las mascotas publicadas antes del mapa pueden agregar una zona desde Editar publicación.</p></div><div class="cards" id="cards" aria-live="polite"></div>
 <section class="safety"><div class="safety-left"><span class="safety-ico"><svg><use href="#i-shield"/></svg></span><div><b>Una comunidad cuidada, publicación por publicación</b><p>Todos pueden explorar. Para publicar hay que registrarse y cada aviso se revisa antes de mostrarse.</p></div></div><button data-action="publish">Publicar mascota <svg><use href="#i-arrow"/></svg></button></section></main>
 <footer class="footer"><span>© Huellitas · San Miguel, Buenos Aires · Comunidad en construcción</span><span>Adoptá, encontrá y ayudá a reunir familias</span></footer>
-</div><div id="overlay" class="overlay"><div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="Detalle de publicación"></div></div><div id="photo-zoom" class="photo-zoom" role="dialog" aria-modal="true" aria-label="Fotografía ampliada" hidden><button type="button" class="photo-zoom-close" data-zoom-action="close" aria-label="Cerrar foto ampliada">×</button><img id="photo-zoom-image" class="photo-zoom-photo" alt="Foto ampliada de mascota" draggable="false"><div class="photo-zoom-footer"><button type="button" class="photo-zoom-nav" data-zoom-action="prev" aria-label="Foto anterior">‹</button><span id="photo-zoom-counter">Foto 1 de 1</span><button type="button" class="photo-zoom-nav" data-zoom-action="next" aria-label="Foto siguiente">›</button></div></div><div id="toast" class="toast" role="status" aria-live="polite"></div>
+</div>
+<dialog id="community-notice" class="community-notice" aria-labelledby="community-notice-title" aria-describedby="community-notice-description">
+ <div class="community-notice-icon" aria-hidden="true"><svg><use href="#i-paw"/></svg></div>
+ <span class="community-notice-eyebrow">HUELLITAS · COMUNIDAD SOLIDARIA</span>
+ <h2 id="community-notice-title">Las mascotas no se venden. Se cuidan. 💚</h2>
+ <p id="community-notice-description">Huellitas es un espacio para <strong>adoptar responsablemente</strong>, buscar mascotas perdidas y ayudar a que vuelvan a casa.</p>
+ <div class="community-notice-warning">
+  <strong>No permitimos la compra ni la venta de animales.</strong>
+  <p>Las adopciones en Huellitas son gratuitas. No pagues señas, reservas ni transferencias por una mascota.</p>
+ </div>
+ <p class="community-notice-report">Si alguien solicita dinero o detectás una publicación sospechosa, <strong>reportala</strong> para que podamos revisarla.</p>
+ <button type="button" id="community-notice-accept" class="community-notice-accept" autofocus>Entendido, continuar</button>
+</dialog>
+<div id="overlay" class="overlay"><div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="Detalle de publicación"></div></div><div id="photo-zoom" class="photo-zoom" role="dialog" aria-modal="true" aria-label="Fotografía ampliada" hidden><button type="button" class="photo-zoom-close" data-zoom-action="close" aria-label="Cerrar foto ampliada">×</button><img id="photo-zoom-image" class="photo-zoom-photo" alt="Foto ampliada de mascota" draggable="false"><div class="photo-zoom-footer"><button type="button" class="photo-zoom-nav" data-zoom-action="prev" aria-label="Foto anterior">‹</button><span id="photo-zoom-counter">Foto 1 de 1</span><button type="button" class="photo-zoom-nav" data-zoom-action="next" aria-label="Foto siguiente">›</button></div></div><div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js"></script>
 <script src="./qr-local.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-<script src="./app.js?v=5.13.0"></script></body></html>
+<script src="./app.js?v=5.13.1"></script></body></html>

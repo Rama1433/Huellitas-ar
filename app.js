@@ -1108,4 +1108,17 @@ window.addEventListener('focus',()=>{if(currentUser)loadNotifications()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&currentUser)loadNotifications()});
 setInterval(()=>{if(currentUser&&!document.hidden)loadNotifications()},25000);
 bootstrap().catch(err=>toast('No se pudo conectar con Supabase: '+err.message));
+
+function showCommunityNotice(){
+ const disclaimer=document.getElementById('community-notice');
+ if(!disclaimer || disclaimer.open)return;
+ try{disclaimer.showModal()}catch(_){disclaimer.setAttribute('open','')}
+}
+const communityNotice=document.getElementById('community-notice');
+if(communityNotice){
+ communityNotice.querySelector('#community-notice-accept')?.addEventListener('click',()=>communityNotice.close());
+ // Every fresh navigation/reload is a new visit; do not interrupt tab switches or internal actions.
+ showCommunityNotice();
+}
+
 })();
