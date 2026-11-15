@@ -541,7 +541,7 @@ async function moderate(id,status){if(!isMod)return;const changes={status,review
 async function featurePost(id,flag){if(!isMod)return;const {error}=await db.from('hu_pet_posts').update({is_featured:flag}).eq('id',id);if(error){toast(error.message);return}toast(flag?'Destacada en el banner':'Retirada del banner');await refreshPosts();moderation()}
 function locationFields(category='adoption'){
  const visible=category!=='adoption';
- return `<div id="location-fields" ${visible?'':'hidden'}><div class="map-section"><div class="private-label">${icon('pin')} ¿En qué zona se perdió o se encontró?</div><p class="map-picker-help">1. Tocá el mapa, arrastrá el marcador o mové el mapa y pulsá «Usar centro». No usamos tu GPS ni mostramos una dirección exacta.</p><div id="area-map" class="pet-map" role="application" aria-label="Mapa para elegir la zona aproximada"></div><div class="map-picker-actions"><button type="button" class="map-pick-primary" data-action="map-use-center">${icon('pin')} Usar centro del mapa</button><button type="button" data-action="map-reset-center">Centrar en localidad</button></div><input type="hidden" name="radius_m" id="radius-select" value="400"><p class="map-note"><strong>Zona aproximada: 400 metros (unas 4 cuadras).</strong> El radio es fijo para que las búsquedas sean más precisas.</p><p id="location-hint" class="map-note">Mové el marcador para elegir el centro aproximado. No publicamos una dirección exacta.</p></div></div>`;
+ return `<div id="location-fields" ${visible?'':'hidden'}><div class="map-section"><div class="private-label">${icon('pin')} ¿En qué zona se perdió o se encontró?</div><p class="map-picker-help">1. Tocá el mapa, arrastrá el marcador o mové el mapa y pulsá «Usar centro». No usamos tu GPS ni mostramos una dirección exacta.</p><div id="area-map" class="pet-map" role="application" aria-label="Mapa para elegir la zona aproximada"></div><div class="map-picker-actions"><button type="button" class="map-pick-primary" data-action="map-use-center">${icon('pin')} Usar centro del mapa</button><button type="button" data-action="map-reset-center">Centrar en localidad</button></div><input type="hidden" name="radius_m" id="radius-select" value="400"><p id="location-hint" class="map-note">La zona de búsqueda se marca en un radio aproximado de 400 metros.</p></div></div>`;
 }
 
 function ageField(value=''){
@@ -751,7 +751,7 @@ function chooseApproxPoint(lat,lng,moveView=false){
    if(moveView)activeMap.panTo([selectedApprox.lat,selectedApprox.lon]);
  }
  const hint=$('#location-hint');
- if(hint)hint.innerHTML=`<strong>Zona aproximada elegida.</strong> Radio: ${radiusLabel($('#radius-select')?.value)}. La posición se redondea para proteger tu privacidad.`;
+ if(hint)hint.textContent='La zona de búsqueda se marca en un radio aproximado de 400 metros.';
 }
 function mapUseCenter(){if(activeMap){const c=activeMap.getCenter();chooseApproxPoint(c.lat,c.lng)}else toast('Elegí primero una localidad.')}
 function mapResetCenter(){
@@ -774,11 +774,11 @@ function initPicker(previous=null){
  areaMarker=L.marker([initial.lat,initial.lon],{
    draggable:true,
    title:'Arrastrame para ajustar la zona aproximada',
-   icon:L.divIcon({className:'hu-map-marker',html:'<span aria-hidden="true"></span>',iconSize:[38,42],iconAnchor:[19,40]})
+   icon:L.divIcon({className:'hu-map-marker',html:'<span aria-hidden="true"></span>',iconSize:[28,28],iconAnchor:[14,14]})
  }).addTo(activeMap);
  drawAreaCircle(initial.lat,initial.lon,radius);
  activeMap.on('click',e=>chooseApproxPoint(e.latlng.lat,e.latlng.lng));
- areaMarker.on('dragend',()=>{const p=areaMarker.getLatLng();chooseApproxPoint(p.lat,p.lng)});areaMarker.bindTooltip('Arrastrame para elegir la zona',{direction:'top',offset:[0,-29]});
+ areaMarker.on('dragend',()=>{const p=areaMarker.getLatLng();chooseApproxPoint(p.lat,p.lng)});areaMarker.bindTooltip('Arrastrame para elegir la zona',{direction:'top',offset:[0,-19]});
  chooseApproxPoint(initial.lat,initial.lon);
  setTimeout(()=>{if(activeMap&&node.isConnected){activeMap.invalidateSize();if(areaCircle)activeMap.fitBounds(areaCircle.getBounds(),{padding:[34,34],maxZoom:16})}},250);
  setTimeout(()=>{if(activeMap&&node.isConnected)activeMap.invalidateSize()},650);
@@ -810,20 +810,20 @@ function areaPostsForMap(){
 }
 function drawOverviewCircles(){
  if(!overviewMap||!window.L)return;
+ // Clear previous circles and markers without touching the OpenStreetMap tile layer.
  overviewMap.eachLayer(layer=>{if(layer instanceof L.Circle || (layer instanceof L.Marker && layer.options?.huOverviewPin))overviewMap.removeLayer(layer)});
  const group=L.featureGroup();
  areaPostsForMap().forEach(p=>{
-  const circle=L.circle([Number(p.approx_lat),Number(p.approx_lon)],{
-   radius:Number(p.search_radius_m||2000),color:p.status==='lost'?'#d29848':'#458864',fillOpacity:.2,weight:2
-  }).addTo(overviewMap);
-  circle.bindTooltip(`${safe(p.name)} · ${safe(p.zone)} · ${safe(statusLabel[p.status])}`);
-  circle.on('click',()=>detail(p));group.addLayer(circle);
-  L.marker([Number(p.approx_lat),Number(p.approx_lon)],{
+  const marker=L.marker([Number(p.approx_lat),Number(p.approx_lon)],{
    huOverviewPin:true,
+   title:'Conocer la historia de '+p.name,
    icon:L.divIcon({className:'hu-public-map-marker',html:'<span class="pin-drop" aria-hidden="true"></span>',iconSize:[22,22],iconAnchor:[11,11]})
-  }).addTo(overviewMap).bindTooltip(`${safe(p.name)} · ${safe(p.zone)}`).on('click',()=>detail(p));
+  }).addTo(overviewMap);
+  marker.bindTooltip(`${safe(p.name)} · ${safe(p.zone)}`);
+  marker.on('click',()=>detail(p));
+  group.addLayer(marker);
  });
- if(group.getLayers().length)overviewMap.fitBounds(group.getBounds(),{padding:[20,20],maxZoom:15});
+ if(group.getLayers().length)overviewMap.fitBounds(group.getBounds(),{padding:[25,25],maxZoom:15});
  else overviewMap.setView(mapCenter(zone||'San Miguel'),11);
  const note=$('#overview-map-help');if(note)note.hidden=group.getLayers().length>0;
 }
