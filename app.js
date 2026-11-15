@@ -200,33 +200,66 @@ function detail(p){
  if(p.photoPaths?.length&&(!p.photoSignedAt||Date.now()-p.photoSignedAt>120000))renewPetPhotos(p).catch(()=>{});
  if(area)setTimeout(()=>{if(activePet?.id===p.id&&overlay.classList.contains('open'))showAreaMap(p)},130);
 }
+
+const CAPTCHA_SITE_KEY=String(document.querySelector('meta[name="huellitas-turnstile-sitekey"]')?.content||'').trim();
+let authCaptchaToken='',authCaptchaWidgetId=null,authCaptchaLoader=null;
+function renderAuthCaptcha(){
+ if(!CAPTCHA_SITE_KEY)return;
+ const el=$('#auth-turnstile');if(!el)return;
+ authCaptchaToken='';authCaptchaWidgetId=null;
+ const render=()=>{
+  if(!el.isConnected||!window.turnstile)return;
+  try{authCaptchaWidgetId=window.turnstile.render(el,{
+   sitekey:CAPTCHA_SITE_KEY,theme:'light',
+   callback:t=>{if(el.isConnected)authCaptchaToken=t},
+   'expired-callback':()=>{authCaptchaToken=''},
+   'error-callback':()=>{authCaptchaToken=''}
+  })}catch(_){el.textContent='No se pudo cargar la verificación. Recargá la página.'}
+ };
+ if(window.turnstile){render();return}
+ if(!authCaptchaLoader)authCaptchaLoader=new Promise((resolve,reject)=>{
+  const script=document.createElement('script');
+  script.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+  script.async=true;script.onload=resolve;script.onerror=reject;document.head.appendChild(script)
+ });
+ authCaptchaLoader.then(render).catch(()=>{if(el.isConnected)el.textContent='No se pudo cargar la verificación. Recargá la página.'});
+}
+function resetAuthCaptcha(form){
+ if(!CAPTCHA_SITE_KEY||$('#auth-form')!==form)return;
+ authCaptchaToken='';
+ try{if(window.turnstile&&authCaptchaWidgetId!==null)window.turnstile.reset(authCaptchaWidgetId)}catch(_){}
+}
+
 function auth(mode='login'){
  authMode=mode;const reg=mode==='register',reset=mode==='reset';
- show(`<div class="form-content"><span class="modal-label">${icon('shield')} COMUNIDAD HUELLITAS</span><h2>${reset?'Recuperá tu acceso':reg?'Sumate a Huellitas':'¡Qué bueno verte!'}</h2><p class="form-subtitle">${reset?'Ingresá tu correo y te enviaremos un enlace para recuperar tu contraseña.':'Podés explorar sin cuenta. Para publicar y contactar necesitás registrarte.'}</p><div class="form-switch"><button class="${!reg&&!reset?'selected':''}" data-action="auth-login">Ingresar</button><button class="${reg?'selected':''}" data-action="auth-register">Registrarme</button></div><form id="auth-form"><input type="hidden" name="mode" value="${mode}">${reg?`<label class="form-label">Tu nombre</label><input type="text" name="name" autocomplete="name" minlength="2" maxlength="80" required placeholder="¿Cómo te llamás?"><label class="form-label">Celular / WhatsApp de contacto</label><input type="tel" name="phone" inputmode="tel" autocomplete="tel" required placeholder="Ej. 11 2345 6789"><p class="input-help">Se guarda en privado. Solo lo compartimos si vos autorizás el contacto.</p>`:''}<label class="form-label">Correo electrónico</label><input type="email" name="email" placeholder="tu@email.com" autocomplete="email" required>${!reset?`<label class="form-label">Contraseña</label><input type="password" name="password" minlength="${reg?12:8}" placeholder="${reg?'12 caracteres, letras y números':'Tu contraseña'}" autocomplete="${reg?'new-password':'current-password'}" required>`:''}<div class="form-error" role="alert" hidden></div><div class="form-note">${icon('lock')} Tu correo y teléfono no se publican. Las confirmaciones por email necesitan que el servicio de correo esté habilitado.</div><button class="submit" type="submit">${reset?'Enviar enlace de recuperación':reg?'Crear cuenta':'Iniciar sesión'}</button></form><button class="menu-btn" style="margin-top:12px" data-action="auth-reset">¿Olvidaste tu contraseña?</button></div>`,true);
+ show(`<div class="form-content"><span class="modal-label">${icon('shield')} COMUNIDAD HUELLITAS</span><h2>${reset?'Recuperá tu acceso':reg?'Sumate a Huellitas':'¡Qué bueno verte!'}</h2><p class="form-subtitle">${reset?'Ingresá tu correo y te enviaremos un enlace para recuperar tu contraseña.':'Podés explorar sin cuenta. Para publicar y contactar necesitás registrarte.'}</p><div class="form-switch"><button class="${!reg&&!reset?'selected':''}" data-action="auth-login">Ingresar</button><button class="${reg?'selected':''}" data-action="auth-register">Registrarme</button></div><form id="auth-form"><input type="hidden" name="mode" value="${mode}">${reg?`<label class="form-label">Tu nombre</label><input type="text" name="name" autocomplete="name" minlength="2" maxlength="80" required placeholder="¿Cómo te llamás?"><label class="form-label">Celular / WhatsApp de contacto</label><input type="tel" name="phone" inputmode="tel" autocomplete="tel" required placeholder="Ej. 11 2345 6789"><p class="input-help">Se guarda en privado. Solo lo compartimos si vos autorizás el contacto.</p>`:''}<label class="form-label">Correo electrónico</label><input type="email" name="email" placeholder="tu@email.com" autocomplete="email" required>${!reset?`<label class="form-label">Contraseña</label><input type="password" name="password" minlength="${reg?12:8}" placeholder="${reg?'12 caracteres, letras y números':'Tu contraseña'}" autocomplete="${reg?'new-password':'current-password'}" required>`:''}${CAPTCHA_SITE_KEY?'<div class="turnstile-holder" id="auth-turnstile" aria-label="Verificación de seguridad"></div>':''}<div class="form-error" role="alert" hidden></div><div class="form-note">${icon('lock')} Tu correo y teléfono no se publican. Las confirmaciones por email necesitan que el servicio de correo esté habilitado.</div><button class="submit" type="submit">${reset?'Enviar enlace de recuperación':reg?'Crear cuenta':'Iniciar sesión'}</button></form><button class="menu-btn" style="margin-top:12px" data-action="auth-reset">¿Olvidaste tu contraseña?</button></div>`,true);
+ if(CAPTCHA_SITE_KEY)renderAuthCaptcha();
 }
 async function doAuth(form){
  if(!db){inlineError(form,'La conexión con Supabase no está disponible.');return}
  const fd=new FormData(form),mode=fd.get('mode'),email=String(fd.get('email')||'').trim(),password=String(fd.get('password')||''),name=String(fd.get('name')||'').trim(),phone=String(fd.get('phone')||'').trim();
  const old=form.querySelector('.form-error');if(old)old.hidden=true;
  if(mode==='register'&&!phoneValid(phone)){inlineError(form,'Ingresá un número de celular válido (10 a 15 dígitos, con característica).');return}
+ if(CAPTCHA_SITE_KEY&&!authCaptchaToken){inlineError(form,'Completá la verificación de seguridad antes de continuar.');return}
+ const captchaOptions=CAPTCHA_SITE_KEY?{captchaToken:authCaptchaToken}:{};
  const submit=form.querySelector('[type=submit]'),done=busy(submit,mode==='register'?'Creando cuenta...':mode==='reset'?'Enviando correo...':'Ingresando...');
  try{
   if(mode==='reset'){
-   const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:SITE_URL});if(error)throw error;
+   const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:SITE_URL,...captchaOptions});if(error)throw error;
    show(`<div class="form-content center-success">${icon('check')}<h2>Revisá tu correo</h2><p>Si el correo corresponde a una cuenta, recibirás instrucciones para recuperar tu contraseña.</p><button class="submit" data-action="auth-login">Volver a ingresar</button></div>`,true);return;
   }
   if(mode==='register'){
    if(name.length<2||password.length<12||!/[a-z]/i.test(password)||!/\d/.test(password))throw new Error('Completá el nombre y elegí una contraseña de al menos 12 caracteres, con letras y números.');
-   const {data,error}=await db.auth.signUp({email,password,options:{emailRedirectTo:SITE_URL,data:{display_name:name,contact_phone:phone}}});if(error)throw error;
+   const {data,error}=await db.auth.signUp({email,password,options:{emailRedirectTo:SITE_URL,data:{display_name:name,contact_phone:phone},...captchaOptions}});if(error)throw error;
    if(data.session){await syncSession(data.session);show(`<div class="form-content center-success">${icon('check')}<h2>¡Bienvenido a Huellitas!</h2><p>Tu cuenta ya está lista para publicar y contactar.</p><button class="submit" data-action="account">Ir a mi cuenta</button></div>`,true)}
    else show(`<div class="form-content center-success">${icon('check')}<h2>Revisá tu correo</h2><p>Te enviamos un enlace para confirmar tu cuenta de Huellitas. Abrilo antes de ingresar. Revisá también la carpeta de correo no deseado.</p><button class="submit" data-action="auth-login">Ya confirmé mi correo</button></div>`,true);
    return;
   }
-  const {data,error}=await db.auth.signInWithPassword({email,password});if(error)throw error;
+  const {data,error}=await db.auth.signInWithPassword({email,password,options:captchaOptions});if(error)throw error;
   await syncSession(data.session);close();toast('¡Bienvenido a Huellitas!');
   if(authIntent==='publish'){authIntent=null;publish()}else if(authIntent==='contact'){authIntent=null;requestForm(activePet)}
  }catch(err){inlineError(form,shortError(err,'auth'))}
- finally{done()}
+ finally{resetAuthCaptcha(form);done()}
 }
 async function syncSession(session){
  currentUser=session?.user||null;noticeCount=0;accountHeader();
