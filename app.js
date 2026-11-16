@@ -34,7 +34,7 @@ let toastTimer=null,lastHeroSwipe=0,likes=new Set(),loading=false,authMode='logi
 let noticeCount=0,notifRows=[],activeMap=null,areaCircle=null,areaMarker=null,selectedApprox=null,currentInboxId=null,detailPhotoIndex=0,inboxRequests=[],shareReturn="requests",overviewMap=null,overviewOpen=false;
 const zoneCenters={'San Miguel':[-34.543,-58.712],'Muñiz':[-34.558,-58.717],'Bella Vista':[-34.568,-58.689],'Los Polvorines':[-34.511,-58.699],'José C. Paz':[-34.512,-58.778],'Grand Bourg':[-34.486,-58.727]};
 const statusText={pending:'Pendiente',accepted:'Aceptada',declined:'Rechazada'};
-const notifierMessages={request_received:'Recibiste una solicitud para una de tus mascotas',request_accepted:'¡Aceptaron tu solicitud!',request_declined:'Actualización de tu solicitud'};
+const notifierMessages={request_received:'Recibiste una solicitud para una de tus mascotas',request_accepted:'¡Aceptaron tu solicitud!',request_declined:'Actualización de tu solicitud',report_received:'⚠️ Reportaron una publicación. Revisá moderación.',post_removed:'Tu publicación fue retirada por moderación. Consultá el motivo.'};
 function phoneValid(v){return /^\+?[0-9 ()-]+$/.test(v)&&v.replace(/\D/g,'').length>=10&&v.replace(/\D/g,'').length<=15}
 function shortError(err,context='generic'){
  const code=String(err?.code||'').toLowerCase(),str=String(err?.message||'').toLowerCase();
@@ -338,7 +338,7 @@ function resetAuthCaptcha(form){
 
 function auth(mode='login'){
  authMode=mode;const reg=mode==='register',reset=mode==='reset';
- show(`<div class="form-content"><span class="modal-label">${icon('shield')} COMUNIDAD HUELLITAS</span><h2>${reset?'Recuperá tu acceso':reg?'Sumate a Huellitas':'¡Qué bueno verte!'}</h2><p class="form-subtitle">${reset?'Ingresá tu correo y te enviaremos un enlace para recuperar tu contraseña.':'Podés explorar sin cuenta. Para publicar y contactar necesitás registrarte.'}</p><div class="form-switch"><button class="${!reg&&!reset?'selected':''}" data-action="auth-login">Ingresar</button><button class="${reg?'selected':''}" data-action="auth-register">Registrarme</button></div><form id="auth-form"><input type="hidden" name="mode" value="${mode}">${reg?`<label class="form-label">Tu nombre</label><input type="text" name="name" autocomplete="name" minlength="2" maxlength="80" required placeholder="¿Cómo te llamás?"><label class="form-label">Celular / WhatsApp de contacto</label><input type="tel" name="phone" inputmode="tel" autocomplete="tel" required placeholder="Ej. 11 2345 6789"><p class="input-help">Se guarda en privado. Solo lo compartimos si vos autorizás el contacto.</p>`:''}<label class="form-label">Correo electrónico</label><input type="email" name="email" placeholder="tu@email.com" autocomplete="email" required>${!reset?`<label class="form-label">Contraseña</label><input type="password" name="password" minlength="${reg?12:8}" placeholder="${reg?'12 caracteres, letras y números':'Tu contraseña'}" autocomplete="${reg?'new-password':'current-password'}" required>`:''}${CAPTCHA_SITE_KEY?'<div class="turnstile-holder" id="auth-turnstile" aria-label="Verificación de seguridad"></div>':''}<div class="form-error" role="alert" hidden></div><div class="form-note">${icon('lock')} Tu correo y teléfono no se publican. Las confirmaciones por email necesitan que el servicio de correo esté habilitado.</div><button class="submit" type="submit">${reset?'Enviar enlace de recuperación':reg?'Crear cuenta':'Iniciar sesión'}</button></form><button class="menu-btn" style="margin-top:12px" data-action="auth-reset">¿Olvidaste tu contraseña?</button></div>`,true);
+ show(`<div class="form-content"><span class="modal-label">${icon('shield')} COMUNIDAD HUELLITAS</span><h2>${reset?'Recuperá tu acceso':reg?'Sumate a Huellitas':'¡Qué bueno verte!'}</h2><p class="form-subtitle">${reset?'Ingresá tu correo y te enviaremos un enlace para recuperar tu contraseña.':'Podés explorar sin cuenta. Para publicar y contactar necesitás registrarte.'}</p><div class="form-switch"><button class="${!reg&&!reset?'selected':''}" data-action="auth-login">Ingresar</button><button class="${reg?'selected':''}" data-action="auth-register">Registrarme</button></div><form id="auth-form"><input type="hidden" name="mode" value="${mode}">${reg?`<label class="form-label">Tu nombre</label><input type="text" name="name" autocomplete="name" minlength="2" maxlength="80" required placeholder="¿Cómo te llamás?"><label class="form-label">Celular / WhatsApp de contacto</label><input type="tel" name="phone" inputmode="tel" autocomplete="tel" required placeholder="Ej. 11 2345 6789"><p class="input-help">Se guarda en privado. Solo lo compartimos si vos autorizás el contacto.</p>`:''}<label class="form-label">Correo electrónico</label><input type="email" name="email" placeholder="tu@email.com" autocomplete="email" required>${!reset?`<label class="form-label">Contraseña</label><span class="password-input-wrap"><input type="password" name="password" minlength="${reg?12:8}" placeholder="${reg?'12 caracteres, letras y números':'Tu contraseña'}" autocomplete="${reg?'new-password':'current-password'}" required><button class="password-toggle" type="button" data-action="toggle-password" aria-label="Mostrar contraseña" aria-pressed="false">${icon('eye')}</button></span>`:''}${CAPTCHA_SITE_KEY?'<div class="turnstile-holder" id="auth-turnstile" aria-label="Verificación de seguridad"></div>':''}<div class="form-error" role="alert" hidden></div><div class="form-note">${icon('lock')} Tu correo y teléfono no se publican. Las confirmaciones por email necesitan que el servicio de correo esté habilitado.</div><button class="submit" type="submit">${reset?'Enviar enlace de recuperación':reg?'Crear cuenta':'Iniciar sesión'}</button></form><button class="menu-btn" style="margin-top:12px" data-action="auth-reset">¿Olvidaste tu contraseña?</button></div>`,true);
  if(CAPTCHA_SITE_KEY)renderAuthCaptcha();
 }
 async function doAuth(form){
@@ -533,12 +533,12 @@ async function myRequests(){
 }
 async function myPosts(){if(!currentUser){auth();return}const {data,error}=await db.from('hu_pet_posts').select('id,name,species,sex,age_text,description,category,locality,status,outcome,created_at,approx_lat,approx_lon,search_radius_m').eq('owner_id',currentUser.id).order('created_at',{ascending:false});if(error){toast(error.message);return}mine=data||[];
 let rejectionReasons=new Map();
-if(mine.some(p=>p.status==='rejected')){
+if(mine.some(p=>p.status==='rejected'||p.status==='archived')){
  const {data:reasonRows,error:reasonError}=await db.rpc('hu_my_rejection_reasons');
  if(reasonError)console.warn('Motivos de rechazo no disponibles',reasonError.message);
  else rejectionReasons=new Map((reasonRows||[]).map(row=>[row.post_id,row.reason]));
 }
-await attachPhotos(mine);show(`<div class="form-content"><span class="modal-label">${icon('paw')} MI CUENTA</span><h2>Mis publicaciones</h2><p class="form-subtitle">Las publicaciones solo aparecen públicamente después de la aprobación.</p><div class="request-list">${mine.map(p=>`<article class="request-item"><b>${safe(p.name)} · ${safe(p.locality)}</b><p>${statusLabel[p.category]}</p><small>${p.photos?.length||0} foto${p.photos?.length===1?'':'s'} · la primera es la portada</small><small>${({pending:'Pendiente de revisión',approved:'Aprobada',rejected:'Rechazada',archived:'Archivada'})[p.status]}${p.outcome!=='active'?' · Resuelta':''}</small>${p.status==='rejected'&&rejectionReasons.has(p.id)?`<div class="post-rejection-reason"><strong>Motivo del rechazo:</strong> ${safe(rejectionReasons.get(p.id))}</div>`:''}<div class="moderation-tools"><button data-action="edit-post" data-id="${p.id}">Editar publicación</button><button data-action="view-inbox" data-id="${p.id}">${icon('heart')} Solicitudes recibidas</button>${p.status==='approved'&&p.outcome==='active'?`<button data-action="resolve-post" data-id="${p.id}">Marcar como ${p.category==='adoption'?'adoptada':'reunida'}</button>`:''}<button class="reject" data-action="delete-post" data-id="${p.id}">Eliminar</button></div></article>`).join('')||'<div class="request-item"><p>Todavía no publicaste ninguna mascota.</p></div>'}</div><button class="submit" data-action="publish">Publicar mascota</button><button class="menu-btn" data-action="account">Volver a mi cuenta</button></div>`,true)}
+await attachPhotos(mine);show(`<div class="form-content"><span class="modal-label">${icon('paw')} MI CUENTA</span><h2>Mis publicaciones</h2><p class="form-subtitle">Las publicaciones solo aparecen públicamente después de la aprobación.</p><div class="request-list">${mine.map(p=>`<article class="request-item"><b>${safe(p.name)} · ${safe(p.locality)}</b><p>${statusLabel[p.category]}</p><small>${p.photos?.length||0} foto${p.photos?.length===1?'':'s'} · la primera es la portada</small><small>${({pending:'Pendiente de revisión',approved:'Aprobada',rejected:'Rechazada',archived:rejectionReasons.has(p.id)?'Eliminada por moderación':'Archivada'})[p.status]}${p.outcome!=='active'?' · Resuelta':''}</small>${['rejected','archived'].includes(p.status)&&rejectionReasons.has(p.id)?`<div class="post-rejection-reason"><strong>${p.status==='archived'?'Motivo de la eliminación:':'Motivo del rechazo:'}</strong> ${safe(rejectionReasons.get(p.id))}</div>`:''}<div class="moderation-tools">${p.status==='archived'&&rejectionReasons.has(p.id)?'':`<button data-action="edit-post" data-id="${p.id}">Editar publicación</button>`}<button data-action="view-inbox" data-id="${p.id}">${icon('heart')} Solicitudes recibidas</button>${p.status==='approved'&&p.outcome==='active'?`<button data-action="resolve-post" data-id="${p.id}">Marcar como ${p.category==='adoption'?'adoptada':'reunida'}</button>`:''}${p.status==='archived'&&rejectionReasons.has(p.id)?'':`<button class="reject" data-action="delete-post" data-id="${p.id}">Eliminar</button>`}</div></article>`).join('')||'<div class="request-item"><p>Todavía no publicaste ninguna mascota.</p></div>'}</div><button class="submit" data-action="publish">Publicar mascota</button><button class="menu-btn" data-action="account">Volver a mi cuenta</button></div>`,true)}
 function editPost(id){
  const p=mine.find(item=>item.id===id);if(!p)return;
  selectedApprox=null;
@@ -852,21 +852,76 @@ async function submitPetReport(form){
  }finally{done()}
 }
 const reportLabels={inappropriate:'Contenido inapropiado',fraud:'Posible estafa',duplicate:'Duplicado',other:'Otro motivo'};
+let reportItems=[];
 async function moderationReports(){
  if(!isMod){toast('Acceso reservado a moderación');return}
  const {data,error}=await db.from('hu_reports').select('id,post_id,reason,details,status,created_at').order('created_at',{ascending:false}).limit(80);
  if(error){toast('No se pudieron cargar los reportes: '+shortError(error));return}
- const items=data||[];
+ const rows=data||[],ids=[...new Set(rows.map(x=>x.post_id))];
+ let posts=[];
+ if(ids.length){
+  const result=await db.from('hu_pet_posts').select('id,name,description,locality,status,outcome').in('id',ids);
+  if(result.error){toast('No se pudo cargar la publicación reportada: '+shortError(result.error));return}
+  posts=result.data||[];
+  await attachPhotos(posts);
+ }
+ const postMap=new Map(posts.map(x=>[x.id,x]));
+ reportItems=rows.map(x=>({...x,post:postMap.get(x.post_id)||null}));
  show('<div class="form-content"><span class="modal-label">'+icon('shield')+' MODERACIÓN</span>'+
- '<h2>Reportes de la comunidad</h2><p class="form-subtitle">Revisá las alertas antes de tomar decisiones. Los reportes no se muestran públicamente.</p>'+
- '<div class="request-list">'+(items.map(r=>'<article class="request-item">'+
- '<b>'+safe(reportLabels[r.reason]||'Reporte')+'</b>'+
- '<small> '+safe(new Date(r.created_at).toLocaleDateString('es-AR'))+' · '+safe(r.status)+'</small>'+
- '<p>'+safe(r.details||'Sin detalles')+'</p>'+
- '<div class="moderation-tools">'+(r.status==='pending'?'<button data-action="mod-report-update" data-id="'+safe(r.id)+'" data-status="reviewing">En revisión</button>':'')+
- (r.status!=='resolved'?'<button data-action="mod-report-update" data-id="'+safe(r.id)+'" data-status="resolved">Marcar revisado</button>':'')+
- '</div></article>').join('')||'<p class="request-item">No hay reportes pendientes.</p>')+'</div>'+
+ '<h2>Reportes de la comunidad</h2><p class="form-subtitle">Revisá los avisos y decidí si corresponde mantener o retirar la publicación. Los reportes son privados.</p>'+
+ '<div class="request-list">'+(reportItems.map(x=>{
+  const p=x.post,remove=p&&p.status==='approved'&&p.outcome==='active'&&x.status!=='resolved';
+  return '<article class="request-item">'+
+  '<b>'+safe(p?.name||'Publicación no disponible')+' · '+safe(p?.locality||'')+'</b>'+
+  (p?.img?'<div class="mod-photo-grid"><div><img src="'+safe(p.img)+'" alt="Foto de la publicación reportada"></div></div>':'')+
+  (p?.description?'<p>'+safe(p.description)+'</p>':'')+
+  '<small>Motivo: '+safe(reportLabels[x.reason]||'Reporte')+' · '+safe(new Date(x.created_at).toLocaleDateString('es-AR'))+' · '+safe(({pending:'Pendiente',reviewing:'En revisión',resolved:'Revisado'})[x.status]||x.status)+'</small>'+
+  '<p>'+safe(x.details||'Sin detalles')+'</p>'+
+  '<div class="moderation-tools">'+
+  (x.status==='pending'?'<button data-action="mod-report-update" data-id="'+safe(x.id)+'" data-status="reviewing">En revisión</button>':'')+
+  (x.status!=='resolved'?'<button data-action="mod-report-dismiss" data-id="'+safe(x.id)+'">Desestimar reporte</button>':'')+
+  (remove?'<button class="reject" data-action="mod-report-remove" data-id="'+safe(x.id)+'">Eliminar publicación</button>':'')+
+  '</div></article>';
+ }).join('')||'<p class="request-item">No hay reportes registrados.</p>')+'</div>'+
  '<button class="submit" data-action="moderation">Volver a moderación</button></div>',true);
+}
+
+function reportRemovalPrompt(id){
+ if(!isMod||!currentUser)return;
+ const report=reportItems.find(x=>x.id===id);
+ if(!report||report.post?.status!=='approved'||report.post?.outcome!=='active'){toast('Esta publicación ya no está disponible para eliminar.');moderationReports();return}
+ show('<div class="form-content"><span class="modal-label">'+icon('shield')+' MODERACIÓN</span>'+
+ '<h2>Eliminar publicación</h2>'+
+ '<p class="form-subtitle">La publicación de <strong>'+safe(report.post.name)+'</strong> dejará de mostrarse públicamente, pero se conservarán sus registros. El motivo será visible para su responsable.</p>'+
+ '<form id="remove-reported-post-form" data-id="'+safe(id)+'">'+
+ '<label class="form-label" for="report-removal-reason">¿Por qué se elimina?</label>'+
+ '<textarea name="reason" id="report-removal-reason" minlength="6" maxlength="220" rows="3" required placeholder="Ej.: La publicación contiene información engañosa."></textarea>'+
+ '<p class="input-help">Entre 6 y 220 caracteres. No incluyas datos personales.</p>'+
+ '<div class="form-error" role="alert" hidden></div>'+
+ '<button class="submit" type="submit">Confirmar eliminación</button></form>'+
+ '<button class="menu-btn" data-action="mod-reports">Cancelar y volver</button></div>',true);
+}
+
+async function submitReportRemoval(form){
+ if(!currentUser||!isMod)return;
+ const id=form.dataset.id,reason=String(new FormData(form).get('reason')||'').replace(/\s+/g,' ').trim();
+ if(reason.length<6||reason.length>220){inlineError(form,'Escribí un motivo de entre 6 y 220 caracteres.');return}
+ const done=busy(form.querySelector('[type=submit]'),'Retirando publicación...');
+ try{
+  const {error}=await db.rpc('hu_resolve_report',{p_report_id:id,p_action:'remove',p_reason:reason});
+  if(error)throw error;
+  toast('Publicación retirada. Se conservó el historial y se notificó a su responsable.');
+  await refreshPosts();await moderationReports();
+ }catch(e){inlineError(form,shortError(e))}
+ finally{done()}
+}
+
+async function dismissReport(id){
+ if(!isMod||!currentUser)return;
+ const {error}=await db.rpc('hu_resolve_report',{p_report_id:id,p_action:'dismiss',p_reason:null});
+ if(error){toast('No se pudo desestimar el reporte: '+shortError(error));return}
+ toast('Reporte desestimado. La publicación se mantiene.');
+ await moderationReports();
 }
 async function moderateReport(id,status){
  if(!isMod||!['reviewing','resolved'].includes(status))return;
@@ -1057,9 +1112,14 @@ function notifyOnlyNew(rows){
 
 async function loadNotifications(){
  if(!currentUser||!db){noticeCount=0;notifRows=[];updateBell();return}
- const {data,error}=await db.from('hu_notifications').select('id,post_id,request_id,kind,read_at,created_at').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(50);
- if(error){console.warn('Notificaciones no disponibles',error.message);return}
- notifRows=data||[];noticeCount=notifRows.filter(n=>!n.read_at).length;updateBell();notifyOnlyNew(notifRows);
+ const [normal,special]=await Promise.all([
+  db.from('hu_notifications').select('id,post_id,request_id,kind,read_at,created_at').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(50),
+  db.from('hu_moderation_alerts').select('id,post_id,report_id,kind,read_at,created_at').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(50)
+ ]);
+ if(normal.error){console.warn('Notificaciones no disponibles',normal.error.message);return}
+ if(special.error)console.warn('Avisos de moderación no disponibles',special.error.message);
+ notifRows=[...(normal.data||[]).map(n=>({...n,source:'contact'})),...(special.data||[]).map(n=>({...n,source:'moderation'}))].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,75);
+ noticeCount=notifRows.filter(n=>!n.read_at).length;updateBell();notifyOnlyNew(notifRows);
 }
 async function notifications(){
  if(!currentUser){auth();return}
@@ -1068,19 +1128,30 @@ async function notifications(){
 }
 async function openNotification(id){
  const row=notifRows.find(n=>n.id===id);if(!row)return;
- if(!row.read_at){const {error}=await db.from('hu_notifications').update({read_at:new Date().toISOString()}).eq('id',row.id);if(error){toast(shortError(error));return}}
+ if(!row.read_at){
+  const table=row.source==='moderation'?'hu_moderation_alerts':'hu_notifications';
+  const {error}=await db.from(table).update({read_at:new Date().toISOString()}).eq('id',row.id);
+  if(error){toast(shortError(error));return}
+ }
  await loadNotifications();
+ if(row.kind==='report_received'){await moderationReports();return}
+ if(row.kind==='post_removed'){await myPosts();return}
  if(row.kind==='request_received'){await myPosts();await inbox(row.post_id)}else await myRequests();
 }
 async function markNoticesRead(){
- const ids=notifRows.filter(n=>!n.read_at).map(n=>n.id);if(!ids.length){notifications();return}
- const {error}=await db.from('hu_notifications').update({read_at:new Date().toISOString()}).in('id',ids);
- if(error){toast(shortError(error));return}await notifications();
+ const unread=notifRows.filter(n=>!n.read_at);
+ if(!unread.length){notifications();return}
+ for(const [source,table] of [['contact','hu_notifications'],['moderation','hu_moderation_alerts']]){
+  const ids=unread.filter(n=>n.source===source).map(n=>n.id);
+  if(!ids.length)continue;
+  const {error}=await db.from(table).update({read_at:new Date().toISOString()}).in('id',ids);
+  if(error){toast(shortError(error));return}
+ }
+ await notifications();
 }
-
 root.addEventListener('click',e=>{const b=e.target.closest('[data-action],[data-filter]');if(!b)return;if(b.dataset.filter){filter=b.dataset.filter;render();return}const a=b.dataset.action;if(a==='explore'){$('#mascotas').scrollIntoView({behavior:'smooth'});return}if(a==='notifications'){notifications();return}if(a==='toggle-overview-map'){toggleOverviewMap();return}if(a==='publish'){publish();return}if(a==='login'){accountMenu();return}if(a==='toggle-sound'){soundOn=!soundOn;b.innerHTML=icon(soundOn?'volume':'mute')+`<span>Sonidos ${soundOn?'activados':'silenciados'}</span>`;b.setAttribute('aria-pressed',String(soundOn));return}if(a==='hero-open'){if(Date.now()-lastHeroSwipe<450)return;openHero();return}if(a==='hero-dot'){heroIndex=Number(b.dataset.index)||0;renderHero();startHero();return}if(a==='pet-touch'){touchPet(b.dataset.id,b);return}if(a==='detail'){detail(pets.find(p=>p.id===b.dataset.id));return}if(a==='pet-share'){share(pets.find(p=>p.id===b.dataset.id));return}if(a==='my-favorites'){myFavorites();return}if(a==='like'){toggleFavorite(b.dataset.id);return}});
-overlay.addEventListener('click',async e=>{if(e.target?.id==='detail-current-photo'){if(Date.now()-lastDetailSwipe<500)return;openPhotoZoom();return}const b=e.target.closest('[data-action]');if(!b){if(e.target===overlay)close();return}const a=b.dataset.action;if(a==='close'){close();return}if(a==='auth-login'||a==='auth-register'||a==='auth-reset'){auth(a.replace('auth-',''));return}if(a==='logout'){if(isMod)await disableAdminPush(true);await db.auth.signOut();currentUser=null;isMod=false;accountHeader();close();toast('Cerraste sesión');return}if(a==='account'){accountMenu();return}if(a==='my-requests'){myRequests();return}if(a==='my-contact'){myContact();return}if(a==='notifications'){notifications();return}if(a==='open-notification'){openNotification(b.dataset.id);return}if(a==='mark-notices-read'){markNoticesRead();return}if(a==='my-posts'){myPosts();return}if(a==='my-favorites'){myFavorites();return}if(a==='favorite-open'){detail(pets.find(p=>p.id===b.dataset.id));return}if(a==='favorite-remove'){if(await toggleFavorite(b.dataset.id))myFavorites();return}if(a==='detail-favorite'&&activePet){toggleFavorite(activePet.id);return}if(a==='push-settings'){adminPushSettings();return}if(a==='push-enable'){activateAdminPush();return}if(a==='push-disable'){disableAdminPush();return}if(a==='push-test'){testAdminPush();return}if(a==='moderation'){moderation();return}if(a==='view-inbox'){inbox(b.dataset.id);return}if(a==='back-inbox'){inbox(currentInboxId);return}if(a==='accept-open'){openAccept(b.dataset.id);return}if(a==='confirm-accept'){answerRequest(b.dataset.id,'accepted');return}if(a==='share-my-contact'){promptShareContact(b.dataset.id,b.dataset.return);return}if(a==='confirm-share'){confirmShare(b.dataset.id);return}if(a==='revoke-share'){revokeShare(b.dataset.id,b.dataset.return);return}if(a==='answer-request'){answerRequest(b.dataset.id,b.dataset.status);return}if(a==='resolve-post'){resolvePost(b.dataset.id);return}if(a==='map-use-center'){mapUseCenter();return}if(a==='map-reset-center'){mapResetCenter();return}if(a==='zoom-photo'){openPhotoZoom();return}if(a==='mod-post'){if(b.dataset.status==='rejected')rejectPostPrompt(b.dataset.id);else moderate(b.dataset.id,b.dataset.status);return}if(a==='feature-post'){featurePost(b.dataset.id,b.dataset.feature==='true');return}if(a==='publish'){publish();return}if(a==='replay'&&activePet){sound(activePet.species);return}if(a==='gallery-prev'){galleryPhoto(activePet,detailPhotoIndex-1);return}if(a==='gallery-next'){galleryPhoto(activePet,detailPhotoIndex+1);return}if(a==='gallery-pick'){galleryPhoto(activePet,Number(b.dataset.photoIndex)||0);return}if(a==='contact'){startContact();return}if(a==='report-post'){reportPet();return}if(a==='mod-reports'){moderationReports();return}if(a==='mod-report-update'){moderateReport(b.dataset.id,b.dataset.status);return}if(a==='share'&&activePet){share(activePet);return}if(a==='share-whatsapp'){shareWhatsapp();return}if(a==='share-copy'){copyShare();return}if(a==='share-native'){shareNative();return}if(a==='share-flyer'&&activePet){generateFlyer(activePet);return}if(a==='edit-post'){editPost(b.dataset.id);return}if(a==='delete-post'){deletePost(b.dataset.id);return}});
-overlay.addEventListener('submit',e=>{e.preventDefault();const f=e.target;if(f.id==='auth-form'){doAuth(f);return}if(f.id==='my-contact-form'){saveMyContact(f);return}if(f.id==='pet-form'){submitPost(f);return}if(f.id==='request-form'){submitRequest(f);return}if(f.id==='report-pet-form'){submitPetReport(f);return}if(f.id==='edit-post-form'){savePost(f);return}if(f.id==='reject-post-form'){submitRejection(f);return}});
+overlay.addEventListener('click',async e=>{if(e.target?.id==='detail-current-photo'){if(Date.now()-lastDetailSwipe<500)return;openPhotoZoom();return}const b=e.target.closest('[data-action]');if(!b){if(e.target===overlay)close();return}const a=b.dataset.action;if(a==='toggle-password'){const input=b.closest('.password-input-wrap')?.querySelector('input');if(!input)return;const revealing=input.type==='password';input.type=revealing?'text':'password';b.innerHTML=icon(revealing?'eye-off':'eye');b.setAttribute('aria-label',revealing?'Ocultar contraseña':'Mostrar contraseña');b.setAttribute('aria-pressed',String(revealing));return}if(a==='close'){close();return}if(a==='auth-login'||a==='auth-register'||a==='auth-reset'){auth(a.replace('auth-',''));return}if(a==='logout'){if(isMod)await disableAdminPush(true);await db.auth.signOut();currentUser=null;isMod=false;accountHeader();close();toast('Cerraste sesión');return}if(a==='account'){accountMenu();return}if(a==='my-requests'){myRequests();return}if(a==='my-contact'){myContact();return}if(a==='notifications'){notifications();return}if(a==='open-notification'){openNotification(b.dataset.id);return}if(a==='mark-notices-read'){markNoticesRead();return}if(a==='my-posts'){myPosts();return}if(a==='my-favorites'){myFavorites();return}if(a==='favorite-open'){detail(pets.find(p=>p.id===b.dataset.id));return}if(a==='favorite-remove'){if(await toggleFavorite(b.dataset.id))myFavorites();return}if(a==='detail-favorite'&&activePet){toggleFavorite(activePet.id);return}if(a==='push-settings'){adminPushSettings();return}if(a==='push-enable'){activateAdminPush();return}if(a==='push-disable'){disableAdminPush();return}if(a==='push-test'){testAdminPush();return}if(a==='moderation'){moderation();return}if(a==='view-inbox'){inbox(b.dataset.id);return}if(a==='back-inbox'){inbox(currentInboxId);return}if(a==='accept-open'){openAccept(b.dataset.id);return}if(a==='confirm-accept'){answerRequest(b.dataset.id,'accepted');return}if(a==='share-my-contact'){promptShareContact(b.dataset.id,b.dataset.return);return}if(a==='confirm-share'){confirmShare(b.dataset.id);return}if(a==='revoke-share'){revokeShare(b.dataset.id,b.dataset.return);return}if(a==='answer-request'){answerRequest(b.dataset.id,b.dataset.status);return}if(a==='resolve-post'){resolvePost(b.dataset.id);return}if(a==='map-use-center'){mapUseCenter();return}if(a==='map-reset-center'){mapResetCenter();return}if(a==='zoom-photo'){openPhotoZoom();return}if(a==='mod-post'){if(b.dataset.status==='rejected')rejectPostPrompt(b.dataset.id);else moderate(b.dataset.id,b.dataset.status);return}if(a==='feature-post'){featurePost(b.dataset.id,b.dataset.feature==='true');return}if(a==='publish'){publish();return}if(a==='replay'&&activePet){sound(activePet.species);return}if(a==='gallery-prev'){galleryPhoto(activePet,detailPhotoIndex-1);return}if(a==='gallery-next'){galleryPhoto(activePet,detailPhotoIndex+1);return}if(a==='gallery-pick'){galleryPhoto(activePet,Number(b.dataset.photoIndex)||0);return}if(a==='contact'){startContact();return}if(a==='report-post'){reportPet();return}if(a==='mod-reports'){moderationReports();return}if(a==='mod-report-remove'){reportRemovalPrompt(b.dataset.id);return}if(a==='mod-report-dismiss'){dismissReport(b.dataset.id);return}if(a==='mod-report-update'){moderateReport(b.dataset.id,b.dataset.status);return}if(a==='share'&&activePet){share(activePet);return}if(a==='share-whatsapp'){shareWhatsapp();return}if(a==='share-copy'){copyShare();return}if(a==='share-native'){shareNative();return}if(a==='share-flyer'&&activePet){generateFlyer(activePet);return}if(a==='edit-post'){editPost(b.dataset.id);return}if(a==='delete-post'){deletePost(b.dataset.id);return}});
+overlay.addEventListener('submit',e=>{e.preventDefault();const f=e.target;if(f.id==='auth-form'){doAuth(f);return}if(f.id==='my-contact-form'){saveMyContact(f);return}if(f.id==='pet-form'){submitPost(f);return}if(f.id==='request-form'){submitRequest(f);return}if(f.id==='report-pet-form'){submitPetReport(f);return}if(f.id==='edit-post-form'){savePost(f);return}if(f.id==='reject-post-form'){submitRejection(f);return}if(f.id==='remove-reported-post-form'){submitReportRemoval(f);return}});
 overlay.addEventListener('change',e=>{
  if(e.target.id==='photo-input'){previewFiles(e.target);return}
  if(e.target.name==='status'){updateLocationVisibility();return}
@@ -1145,7 +1216,7 @@ const hc=$('#hero-carousel');if(hc){hc.addEventListener('mouseenter',stopHero);h
 async function bootstrap(){if(!db){toast('Error: biblioteca de conexión no disponible');return}db.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='USER_UPDATED'){setTimeout(()=>syncSession(session).catch(()=>{}),0)}if(event==='PASSWORD_RECOVERY'){setTimeout(()=>passwordChange(),0)}});
 const {data}=await db.auth.getSession();await syncSession(data.session);await refreshPosts();if(deepLinkId){const sharedPet=pets.find(p=>p.id===deepLinkId);if(sharedPet)detail(sharedPet);else toast('Este aviso no está disponible o todavía no fue aprobado.')}if(window.location.hash.includes('error=')){toast('No se pudo completar la confirmación. Solicitá otro enlace.')}if(!currentUser&&new URLSearchParams(location.search).has('panel'))toast('Ingresá con tu cuenta administradora para revisar los avisos.')
 }
-function passwordChange(){show(`<div class="form-content"><h2>Elegí una contraseña nueva</h2><form id="new-pass-form"><label class="form-label">Nueva contraseña</label><input name="password" type="password" minlength="8" required autocomplete="new-password"><button type="submit" class="submit">Guardar contraseña</button></form></div>`,true)}
+function passwordChange(){show(`<div class="form-content"><h2>Elegí una contraseña nueva</h2><form id="new-pass-form"><label class="form-label">Nueva contraseña</label><span class="password-input-wrap"><input name="password" type="password" minlength="8" required autocomplete="new-password"><button class="password-toggle" type="button" data-action="toggle-password" aria-label="Mostrar contraseña" aria-pressed="false">${icon('eye')}</button></span><button type="submit" class="submit">Guardar contraseña</button></form></div>`,true)}
 overlay.addEventListener('submit',async e=>{if(e.target.id!=='new-pass-form')return;e.preventDefault();const pwd=new FormData(e.target).get('password');const {error}=await db.auth.updateUser({password:pwd});if(error){toast(error.message);return}close();toast('Contraseña actualizada correctamente')});
 render();renderHero();startHero();
 window.addEventListener('focus',()=>{if(currentUser)loadNotifications()});
