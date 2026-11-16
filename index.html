@@ -273,11 +273,11 @@
 .pet-social{gap:7px}
 .pet-social .pet-card-age{display:block;flex:1 1 auto;min-width:0;margin-right:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px;line-height:1.4;font-weight:400;color:#7c8e82}
 
-/* Pie de página compacto y centrado en PC y móvil. */
-.footer{display:flex;flex-direction:column;align-items:center;justify-content:center;flex-wrap:nowrap;text-align:center;gap:4px;padding:16px 18px}
-.footer>span{display:block;max-width:100%;line-height:1.45}
-.footer>.community-rules-link{padding:3px 6px;font-size:11px}
-@media(max-width:620px){.footer{padding:15px 14px;gap:5px}}
+/* Pie de página: una sola línea en PC, con separaciones moderadas. */
+.footer{display:flex;flex-direction:row;align-items:center;justify-content:center;flex-wrap:nowrap;text-align:center;gap:clamp(12px,2.5vw,36px);padding:16px 18px}
+.footer>span{display:block;white-space:nowrap;line-height:1.45}
+.footer>.community-rules-link{padding:3px 6px;font-size:11px;white-space:nowrap}
+@media(max-width:850px){.footer{flex-wrap:wrap;gap:8px 18px;padding:15px 14px}.footer>span{white-space:normal}}
 </style></head><body>
 <svg style="display:none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <symbol id="i-paw" viewBox="0 0 24 24"><ellipse cx="12" cy="16.6" rx="6.1" ry="4.1"/><ellipse cx="5" cy="9.8" rx="1.6" ry="2.3" transform="rotate(-15 5 9.8)"/><ellipse cx="9.2" cy="6.5" rx="1.5" ry="2.3" transform="rotate(-8 9.2 6.5)"/><ellipse cx="14.8" cy="6.5" rx="1.5" ry="2.3" transform="rotate(8 14.8 6.5)"/><ellipse cx="19" cy="9.8" rx="1.6" ry="2.3" transform="rotate(15 19 9.8)"/></symbol>
