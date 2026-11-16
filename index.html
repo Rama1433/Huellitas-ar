@@ -272,6 +272,12 @@
 /* Antigüedad en la misma línea que favoritos y compartidos, sin recuadro. */
 .pet-social{gap:7px}
 .pet-social .pet-card-age{display:block;flex:1 1 auto;min-width:0;margin-right:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px;line-height:1.4;font-weight:400;color:#7c8e82}
+
+/* Pie de página compacto y centrado en PC y móvil. */
+.footer{display:flex;flex-direction:column;align-items:center;justify-content:center;flex-wrap:nowrap;text-align:center;gap:4px;padding:16px 18px}
+.footer>span{display:block;max-width:100%;line-height:1.45}
+.footer>.community-rules-link{padding:3px 6px;font-size:11px}
+@media(max-width:620px){.footer{padding:15px 14px;gap:5px}}
 </style></head><body>
 <svg style="display:none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <symbol id="i-paw" viewBox="0 0 24 24"><ellipse cx="12" cy="16.6" rx="6.1" ry="4.1"/><ellipse cx="5" cy="9.8" rx="1.6" ry="2.3" transform="rotate(-15 5 9.8)"/><ellipse cx="9.2" cy="6.5" rx="1.5" ry="2.3" transform="rotate(-8 9.2 6.5)"/><ellipse cx="14.8" cy="6.5" rx="1.5" ry="2.3" transform="rotate(8 14.8 6.5)"/><ellipse cx="19" cy="9.8" rx="1.6" ry="2.3" transform="rotate(15 19 9.8)"/></symbol>
@@ -313,7 +319,7 @@
 <div class="filters"><div class="tabs" role="group" aria-label="Filtrar publicaciones"><button class="tab active" data-filter="all" aria-pressed="true">Todas</button><button class="tab" data-filter="adoption"><svg><use href="#i-heart"/></svg> Adopción</button><button class="tab" data-filter="lost"><svg><use href="#i-search"/></svg> Perdidos</button><button class="tab" data-filter="found"><svg><use href="#i-paw"/></svg> Encontrados</button></div><div class="searchbar"><div class="search-wrap"><svg><use href="#i-search"/></svg><input id="search" type="search" aria-label="Buscar mascotas" placeholder="Buscar mascota..." autocomplete="off"></div><select id="zone" class="zone" aria-label="Elegir localidad"><option value="">Todas las zonas</option><option>San Miguel</option><option>Muñiz</option><option>Bella Vista</option><option>José C. Paz</option><option>Los Polvorines</option><option>Grand Bourg</option></select></div></div>
 <div class="overview-toolbar"><div class="overview-actions"><button class="soft-action" id="overview-map-toggle" data-action="toggle-overview-map"><svg><use href="#i-pin"/></svg> Ver mapa de búsquedas</button><button type="button" class="favorites-quick" data-action="my-favorites"><svg><use href="#i-heart"/></svg> Mis favoritos</button></div><span>Solo zonas aproximadas de mascotas perdidas o encontradas.</span></div><div id="overview-map-section" class="overview-map-section" hidden><div id="overview-map" class="pet-map" aria-label="Zonas de búsqueda de mascotas"></div><small>Tocá un punto para conocer la historia de esa mascota. Los puntos son aproximados. © OpenStreetMap.</small><p id="overview-map-help" class="map-empty-note" hidden>Aún no hay zonas de búsqueda aprobadas. Las mascotas publicadas antes del mapa pueden agregar una zona desde Editar publicación.</p></div><div class="cards" id="cards" aria-live="polite"></div>
 <section class="safety"><div class="safety-left"><span class="safety-ico"><svg><use href="#i-shield"/></svg></span><div><b>Una comunidad cuidada, publicación por publicación</b><p>Todos pueden explorar. Para publicar hay que registrarse y cada aviso se revisa antes de mostrarse.</p></div></div><button data-action="publish">Publicar mascota <svg><use href="#i-arrow"/></svg></button></section></main>
-<footer class="footer"><span>© Huellitas · San Miguel, Buenos Aires · Comunidad en construcción</span><span>Adoptá, encontrá y ayudá a reunir familias</span><button type="button" id="community-rules-link" class="community-rules-link">Normas de la comunidad</button></footer>
+<footer class="footer"><span>© Huellitas · San Miguel, Buenos Aires</span><span>Adoptá, encontrá y ayudá a reunir familias</span><button type="button" id="community-rules-link" class="community-rules-link">Normas de la comunidad</button></footer>
 </div>
 <dialog id="community-notice" class="community-notice" aria-labelledby="community-notice-title" aria-describedby="community-notice-description">
  <div class="community-notice-icon" aria-hidden="true"><svg><use href="#i-paw"/></svg></div>
