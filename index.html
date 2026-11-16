@@ -278,6 +278,37 @@
 .footer>span{display:block;white-space:nowrap;line-height:1.45}
 .footer>.community-rules-link{padding:3px 6px;font-size:11px;white-space:nowrap}
 @media(max-width:850px){.footer{flex-wrap:wrap;gap:8px 18px;padding:15px 14px}.footer>span{white-space:normal}}
+
+/* Huellitas: publicación simple en tres pasos, sin emojis ni cambios al resto. */
+.publish-flow .publish-progress{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 17px}
+.publish-flow #publish-progress-label{font-size:10px;font-weight:850;letter-spacing:1.3px;color:#668573}
+.publish-progress-bars{display:flex;gap:5px;align-items:center}
+.publish-progress-bars i{display:block;width:30px;height:5px;border-radius:99px;background:#e2eae1}
+.publish-progress-bars i.active{background:#2b7653}
+.publish-flow [data-publish-step]>h2{font-size:27px;line-height:1.16;letter-spacing:-.8px;margin:6px 0 9px}
+.publish-choice-list{display:grid;gap:10px;margin-top:19px}
+.publish-flow .publish-choice{appearance:none;display:flex;align-items:center;gap:12px;text-align:left;width:100%;min-width:0;padding:13px;background:#fff;border:1.5px solid #dbe7db;border-radius:15px;color:#214e38;cursor:pointer;transition:border-color .15s ease,background .15s ease,box-shadow .15s ease}
+.publish-flow .publish-choice:hover,.publish-flow .publish-choice:focus-visible{border-color:#83b694;background:#f5fbf4}
+.publish-flow .publish-choice:focus-visible{outline:2px solid #2d7653;outline-offset:2px}
+.publish-flow .publish-choice.selected{background:#e9f6e8;border-color:#64a678;box-shadow:0 0 0 1px #c1e4c4}
+.publish-choice-icon{display:grid;place-items:center;width:45px;height:45px;flex:0 0 45px;background:#e9f3e8;border-radius:12px;color:#286448}
+.publish-choice-icon svg{width:23px;height:23px;stroke-width:1.8}
+.publish-choice-text{display:flex;flex:1 1 auto;min-width:0;flex-direction:column;gap:3px}
+.publish-choice-text strong{font-size:14px;line-height:1.3;font-weight:820}
+.publish-choice-text small{font-size:11px;line-height:1.4;color:#718877}
+.publish-choice-check{display:grid;place-items:center;flex:0 0 23px;width:23px;height:23px;border-radius:50%;border:1px solid #d6e5d9;color:transparent}
+.publish-choice-check svg{width:15px;height:15px}
+.publish-choice.selected .publish-choice-check{background:#276b4d;border-color:#276b4d;color:white}
+.publish-selected{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:14px 0 16px;padding:9px 12px;background:#f0f7ed;border:1px solid #dcebd9;border-radius:11px;color:#285a40;font-size:12px;font-weight:800}
+.publish-selected button{border:0;background:none;color:#2b7653;font-size:11px;font-weight:800;text-decoration:underline;text-underline-offset:2px;cursor:pointer;padding:4px}
+.publish-flow .publish-back,.publish-success .publish-back{display:block;margin:12px auto 0;padding:9px 13px;border:0;background:transparent;color:#597866;font-size:12px;font-weight:730;text-align:center;cursor:pointer}
+.publish-flow .publish-back:hover,.publish-success .publish-back:hover{text-decoration:underline}
+.publish-flow .submit svg{width:15px;height:15px;vertical-align:-3px;margin-right:5px}
+.publish-flow .form-error:not([hidden]){margin:13px 0 2px}
+.publish-success-icon{display:grid;place-items:center;width:70px;height:70px;margin:10px auto 18px;border-radius:50%;background:#e1f4e3;border:2px solid #bde4c2;color:#256e49}
+.publish-success-icon svg{width:35px;height:35px;stroke-width:2.3}
+.publish-success h2{font-size:27px;line-height:1.2;margin-bottom:12px}
+@media(max-width:620px){.publish-flow .publish-choice{padding:12px;gap:10px}.publish-flow [data-publish-step]>h2{font-size:25px}.publish-choice-icon{width:43px;height:43px;flex-basis:43px}}
 </style></head><body>
 <svg style="display:none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <symbol id="i-paw" viewBox="0 0 24 24"><ellipse cx="12" cy="16.6" rx="6.1" ry="4.1"/><ellipse cx="5" cy="9.8" rx="1.6" ry="2.3" transform="rotate(-15 5 9.8)"/><ellipse cx="9.2" cy="6.5" rx="1.5" ry="2.3" transform="rotate(-8 9.2 6.5)"/><ellipse cx="14.8" cy="6.5" rx="1.5" ry="2.3" transform="rotate(8 14.8 6.5)"/><ellipse cx="19" cy="9.8" rx="1.6" ry="2.3" transform="rotate(15 19 9.8)"/></symbol>
@@ -337,4 +368,4 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js"></script>
 <script src="./qr-local.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-<script src="./app.js?v=5.13.8"></script></body></html>
+<script src="./app.js?v=5.13.9"></script></body></html>
