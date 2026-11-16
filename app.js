@@ -870,7 +870,7 @@ async function moderationReports(){
  show('<div class="form-content"><span class="modal-label">'+icon('shield')+' MODERACIÓN</span>'+
  '<h2>Reportes de la comunidad</h2><p class="form-subtitle">Revisá los avisos y decidí si corresponde mantener o retirar la publicación. Los reportes son privados.</p>'+
  '<div class="request-list">'+(reportItems.map(x=>{
-  const p=x.post,remove=p&&p.status==='approved'&&p.outcome==='active'&&x.status!=='resolved';
+  const p=x.post,remove=p&&p.status==='approved'&&p.outcome==='active';
   return '<article class="request-item">'+
   '<b>'+safe(p?.name||'Publicación no disponible')+' · '+safe(p?.locality||'')+'</b>'+
   (p?.img?'<div class="mod-photo-grid"><div><img src="'+safe(p.img)+'" alt="Foto de la publicación reportada"></div></div>':'')+
