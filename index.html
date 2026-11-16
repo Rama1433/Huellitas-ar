@@ -264,6 +264,14 @@
 .detail-published button{appearance:none;border:0;padding:0;background:transparent;color:#708479;font:inherit;font-size:10px;line-height:1.4;cursor:pointer;text-align:left}
 .detail-published button:hover,.detail-published button:focus-visible{color:#285b43;text-decoration:underline;text-underline-offset:2px}
 .detail-published button:focus-visible{outline:2px solid #285b43;outline-offset:2px;border-radius:2px}
+
+/* Compacta la separación entre las miniaturas y la información de la mascota. */
+.detail-content{padding-top:18px}
+@media(max-width:620px){.detail-content{padding-top:12px}}
+
+/* Antigüedad en la misma línea que favoritos y compartidos, sin recuadro. */
+.pet-social{gap:7px}
+.pet-social .pet-card-age{display:block;flex:1 1 auto;min-width:0;margin-right:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px;line-height:1.4;font-weight:400;color:#7c8e82}
 </style></head><body>
 <svg style="display:none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <symbol id="i-paw" viewBox="0 0 24 24"><ellipse cx="12" cy="16.6" rx="6.1" ry="4.1"/><ellipse cx="5" cy="9.8" rx="1.6" ry="2.3" transform="rotate(-15 5 9.8)"/><ellipse cx="9.2" cy="6.5" rx="1.5" ry="2.3" transform="rotate(-8 9.2 6.5)"/><ellipse cx="14.8" cy="6.5" rx="1.5" ry="2.3" transform="rotate(8 14.8 6.5)"/><ellipse cx="19" cy="9.8" rx="1.6" ry="2.3" transform="rotate(15 19 9.8)"/></symbol>
@@ -323,4 +331,4 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js"></script>
 <script src="./qr-local.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-<script src="./app.js?v=5.13.7"></script></body></html>
+<script src="./app.js?v=5.13.8"></script></body></html>
