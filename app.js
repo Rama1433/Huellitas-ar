@@ -788,7 +788,7 @@ function setPublishStep(step){
  form.dataset.step=String(step);
  form.querySelectorAll('[data-publish-step]').forEach(panel=>{panel.hidden=Number(panel.dataset.publishStep)!==step});
  const label=$('#publish-progress-label');if(label)label.textContent=`PASO ${step} DE 3`;
- form.querySelectorAll('[data-publish-progress]').forEach(bar=>bar.classList.toggle('active',Number(bar.dataset.publishProgress)<=step));
+ modal.querySelectorAll('[data-publish-progress]').forEach(bar=>bar.classList.toggle('active',Number(bar.dataset.publishProgress)<=step));
  const error=form.querySelector('.form-error');if(error)error.hidden=true;
  modal.scrollTop=0;
  if(step===2&&activeMap)setTimeout(()=>{if(activeMap&&form.isConnected&&form.dataset.step==='2')activeMap.invalidateSize()},140);
