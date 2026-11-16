@@ -252,6 +252,12 @@
 @media(max-width:400px){.community-notice{padding:23px 19px}.community-notice h2{font-size:22px}}
 .community-rules-link{background:none;border:0;color:#547763;text-decoration:underline;text-underline-offset:3px;font:inherit;font-size:12px;cursor:pointer;padding:8px 3px}.community-rules-link:hover{color:#174b39}.community-rules-link:focus-visible{outline:2px solid #245b43;outline-offset:3px;border-radius:4px}
 .post-rejection-reason{margin:10px 0 12px;padding:11px 13px;border:1px solid #efd7c5;background:#fff7ef;color:#764b30;border-radius:12px;font-size:12px;line-height:1.5;overflow-wrap:anywhere}.post-rejection-reason strong{display:block;margin-bottom:3px;color:#71442c}
+.password-input-wrap{position:relative;display:block;width:100%}
+.password-input-wrap>input{width:100%;padding-right:53px!important}
+.password-toggle{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:40px;height:40px;display:grid;place-items:center;border:0;border-radius:9px;background:transparent;color:#315d46;cursor:pointer;z-index:1}
+.password-toggle:hover{background:#edf5ee}
+.password-toggle:focus-visible{outline:2px solid #285b45;outline-offset:2px}
+.password-toggle svg{width:21px;height:21px;stroke:currentColor;stroke-width:1.8;fill:none}
 </style></head><body>
 <svg style="display:none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <symbol id="i-paw" viewBox="0 0 24 24"><ellipse cx="12" cy="16.6" rx="6.1" ry="4.1"/><ellipse cx="5" cy="9.8" rx="1.6" ry="2.3" transform="rotate(-15 5 9.8)"/><ellipse cx="9.2" cy="6.5" rx="1.5" ry="2.3" transform="rotate(-8 9.2 6.5)"/><ellipse cx="14.8" cy="6.5" rx="1.5" ry="2.3" transform="rotate(8 14.8 6.5)"/><ellipse cx="19" cy="9.8" rx="1.6" ry="2.3" transform="rotate(15 19 9.8)"/></symbol>
@@ -263,6 +269,8 @@
 <symbol id="i-volume" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4V5Zm4 4a5 5 0 0 1 0 6m3-9a9 9 0 0 1 0 12"/></symbol>
 <symbol id="i-mute" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4V5Zm5 4 6 6m0-6-6 6"/></symbol>
 <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-7-7 7 7-7 7"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.7-6.5 10-6.5S22 12 22 12s-3.7 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M4.5 6.5C3 8 2 10 2 12c0 0 3.7 6.5 10 6.5 1.7 0 3.3-.5 4.7-1.3M9 5.9A10.9 10.9 0 0 1 12 5.5C18.3 5.5 22 12 22 12a16 16 0 0 1-2.5 3.1M3 3l18 18"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
 <symbol id="i-shield" viewBox="0 0 24 24"><path d="m12 2 9 4v6c0 5-4 8.5-9 10-5-1.5-9-5-9-10V6l9-4Z"/><path d="m8.5 12 2.3 2.3 4.8-5"/></symbol>
 <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="5" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m7.7 10.8 7.7-4.3m-7.7 6.7 7.7 4.3"/></symbol>
 <symbol id="i-x" viewBox="0 0 24 24"><path d="M5 5 19 19M19 5 5 19"/></symbol>
@@ -309,4 +317,4 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js"></script>
 <script src="./qr-local.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-<script src="./app.js?v=5.13.3"></script></body></html>
+<script src="./app.js?v=5.13.4"></script></body></html>
