@@ -1067,6 +1067,84 @@ function drawFlyerPhotoTile(ctx,img,x,y,width,height,radius=25){
  ctx.restore();
 }
 
+
+function flyerRoundedRect(ctx,x,y,w,h,r=24){
+ const a=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+a,y);ctx.lineTo(x+w-a,y);ctx.quadraticCurveTo(x+w,y,x+w,y+a);
+ ctx.lineTo(x+w,y+h-a);ctx.quadraticCurveTo(x+w,y+h,x+w-a,y+h);
+ ctx.lineTo(x+a,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-a);
+ ctx.lineTo(x,y+a);ctx.quadraticCurveTo(x,y,x+a,y);ctx.closePath();
+}
+function flyerTextLines(ctx,text,x,y,width,lineHeight,maxLines){
+ const words=String(text||'').replace(/\s+/g,' ').trim().split(' ').filter(Boolean),lines=[];
+ let line='',index=0;
+ for(;index<words.length;index++){
+  const next=line?line+' '+words[index]:words[index];
+  if(!line||ctx.measureText(next).width<=width)line=next;
+  else{lines.push(line);line=words[index];if(lines.length>=maxLines)break;}
+ }
+ if(lines.length<maxLines&&line)lines.push(line);
+ if(index<words.length&&lines.length){
+  const last=lines.length-1;
+  while(lines[last]&&ctx.measureText(lines[last]+'…').width>width)lines[last]=lines[last].slice(0,-1);
+  lines[last]+='…';
+ }
+ lines.forEach((l,i)=>ctx.fillText(l,x,y+i*lineHeight));
+}
+async function flyerMapTile(url){
+ const img=new Image();img.crossOrigin='anonymous';
+ try{
+  img.src=url;
+  return await Promise.race([img.decode().then(()=>img).catch(()=>null),new Promise(resolve=>setTimeout(()=>resolve(null),4500))]);
+ }catch(e){return null}
+}
+async function drawFlyerStreetMap(ctx,p,x,y,w,h){
+ const lat=Number(p.approx_lat),lon=Number(p.approx_lon),radius=Number(p.search_radius_m);
+ if(!Number.isFinite(lat)||!Number.isFinite(lon)||!Number.isFinite(radius)||radius<=0||Math.abs(lat)>85||Math.abs(lon)>180)return false;
+ const z=15,pow=2**z,rad=lat*Math.PI/180;
+ const px=(lon+180)/360*pow*256,py=(1-Math.log(Math.tan(rad)+1/Math.cos(rad))/Math.PI)/2*pow*256;
+ const left=px-w/2,top=py-h/2,tiles=[];
+ for(let ty=Math.floor(top/256);ty<=Math.floor((top+h-1)/256);ty++){
+  for(let tx=Math.floor(left/256);tx<=Math.floor((left+w-1)/256);tx++){
+   if(ty<0||ty>=pow)continue;
+   const txWrap=((tx%pow)+pow)%pow;
+   tiles.push({x:tx*256-left,y:ty*256-top,url:'https://tile.openstreetmap.org/'+z+'/'+txWrap+'/'+ty+'.png'});
+  }
+ }
+ // Solo los mosaicos necesarios para esta imagen, al solicitarla el usuario.
+ const images=await Promise.all(tiles.map(tile=>flyerMapTile(tile.url)));
+ if(!images.length||images.some(img=>!img))return false;
+ ctx.save();flyerRoundedRect(ctx,x,y,w,h,24);ctx.clip();
+ ctx.fillStyle='#e8ebdf';ctx.fillRect(x,y,w,h);
+ tiles.forEach((tile,i)=>ctx.drawImage(images[i],x+tile.x,y+tile.y,256,256));
+ const metersPerPixel=156543.03392*Math.cos(rad)/pow,rangePx=radius/metersPerPixel;
+ ctx.fillStyle='rgba(53,148,87,.22)';ctx.strokeStyle='#23734f';ctx.lineWidth=3;
+ ctx.beginPath();ctx.arc(x+w/2,y+h/2,rangePx,0,Math.PI*2);ctx.fill();ctx.stroke();
+ ctx.fillStyle='#17583e';ctx.beginPath();ctx.arc(x+w/2,y+h/2,12,0,Math.PI*2);ctx.fill();
+ ctx.strokeStyle='#ffffff';ctx.lineWidth=3;ctx.stroke();
+ // Licencia obligatoria visible en la imagen final.
+ ctx.fillStyle='rgba(255,255,255,.96)';ctx.fillRect(x,y+h-30,w,30);
+ ctx.fillStyle='#204b39';ctx.font='500 18px system-ui,sans-serif';ctx.fillText('© OpenStreetMap contributors',x+12,y+h-9);
+ ctx.restore();return true;
+}
+function drawFlyerInfo(ctx,p,withMap){
+ const x=46,y=1306,w=withMap?483:988,h=288;
+ ctx.fillStyle='#205c46';ctx.strokeStyle='#538568';ctx.lineWidth=2;
+ flyerRoundedRect(ctx,x,y,w,h,24);ctx.fill();ctx.stroke();
+ ctx.fillStyle='#f5d69a';ctx.font='800 32px system-ui,sans-serif';ctx.fillText('DESCRIPCIÓN',x+24,y+46);
+ const description=String(p.description||p.desc||'').replace(/\s+/g,' ').trim();
+ ctx.fillStyle='#ffffff';ctx.font='400 28px system-ui,sans-serif';
+ flyerTextLines(ctx,description||'Sin observaciones cargadas.',x+24,y+96,w-48,39,withMap?4:3);
+ const traits=[
+  p.age&&p.age!=='Sin indicar'?p.age:null,
+  p.sex&&p.sex!=='Sin indicar'?p.sex:null,
+  petSizeLabel(p.size,p.sex)
+ ].filter(Boolean);
+ if(traits.length){
+  ctx.fillStyle='#cfe5d2';ctx.font='600 24px system-ui,sans-serif';
+  flyerTextLines(ctx,traits.join(' · '),x+24,y+h-30,w-48,26,1);
+ }
+}
+
 async function generateFlyer(p){const w=1080,h=1920,canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');if(!ctx){toast('No se pudo generar la imagen');return}ctx.fillStyle='#174b39';ctx.fillRect(0,0,w,h);ctx.fillStyle='#f5d69a';ctx.font='900 76px system-ui,sans-serif';ctx.fillText('Huellitas.',70,130);ctx.fillStyle='#ffffff';ctx.font='500 30px system-ui,sans-serif';ctx.fillText('CONECTAMOS HISTORIAS',74,175);
 // Renueva las URL firmadas si el aviso estuvo abierto varios minutos.
 if(p.photoPaths?.length&&(!p.photoSignedAt||Date.now()-p.photoSignedAt>120000)){
@@ -1075,7 +1153,7 @@ if(p.photoPaths?.length&&(!p.photoSignedAt||Date.now()-p.photoSignedAt>120000)){
 const photoUrls=[p.img,...(p.photos||[])].filter((url,index,arr)=>url&&arr.indexOf(url)===index).slice(0,3);
 const flyerPhotos=(await Promise.all(photoUrls.map(loadFlyerImage))).filter(Boolean);
 const img=flyerPhotos[0]||null;
-const py=215,ph=900;
+const py=215,ph=780;
 if(flyerPhotos.length>1){
  // Una foto principal grande y una o dos secundarias, según las fotos disponibles.
  const margin=28,gap=16,top=py+28,tileHeight=ph-56,largeWidth=650;
@@ -1101,11 +1179,33 @@ if(flyerPhotos.length>1){
  ctx.fillText(p.species==='cat'?'GATO':'PERRO',110,py+480);
 }
 
-ctx.fillStyle='#174b39';ctx.fillRect(0,1125,w,795);ctx.fillStyle='#f5d69a';ctx.font='900 40px system-ui,sans-serif';ctx.fillText(statusLabel[p.status].toUpperCase(),72,1210);ctx.fillStyle='#ffffff';const nsize=fitText(ctx,p.name,930,92);ctx.font=`900 ${nsize}px system-ui,sans-serif`;ctx.fillText(p.name,70,1325);ctx.font='500 41px system-ui,sans-serif';ctx.fillText(`San Miguel y alrededores · ${p.zone}`,72,1390);
-ctx.fillStyle='#f5d69a';ctx.fillRect(69,1438,940,3);ctx.fillStyle='#ffffff';ctx.font='600 35px system-ui,sans-serif';const phrase=p.status==='adoption'?'Ayudanos a encontrarle un hogar.':p.status==='lost'?'Ayudanos a encontrarlo y reunirlo con su familia.':'Ayudanos a encontrar a su familia.';const words=phrase.split(' ');let line='',y=1518;for(const word of words){const cand=line?line+' '+word:word;if(ctx.measureText(cand).width>885&&line){ctx.fillText(line,74,y);y+=49;line=word}else line=cand}if(line)ctx.fillText(line,74,y);
-ctx.fillStyle='#f5d69a';ctx.font='800 34px system-ui,sans-serif';ctx.fillText('huellitas-ar.vercel.app',72,1824);ctx.fillStyle='#cfe0d2';ctx.font='400 22px system-ui,sans-serif';ctx.fillText('Buscá esta mascota en Huellitas',72,1865);
-// QR drawn locally, pointing to the individual approved post.
-try{window.HuQR?.draw(ctx,petUrl(p),812,1670,220)}catch(e){console.warn('QR no disponible',e)}
+ctx.fillStyle='#174b39';ctx.fillRect(0,1010,w,910);
+ctx.fillStyle='#f5d69a';ctx.font='900 40px system-ui,sans-serif';ctx.fillText(statusLabel[p.status].toUpperCase(),72,1083);
+ctx.fillStyle='#ffffff';const nsize=fitText(ctx,p.name,930,92);
+ctx.font='900 '+nsize+'px system-ui,sans-serif';ctx.fillText(p.name,70,1173);
+const locationLabel='San Miguel y alrededores · '+p.zone,locSize=fitText(ctx,locationLabel,930,40);
+ctx.font='500 '+locSize+'px system-ui,sans-serif';ctx.fillText(locationLabel,72,1233);
+ctx.fillStyle='#f5d69a';ctx.fillRect(69,1274,940,3);
+const showMap=(p.status==='lost'||p.status==='found')&&p.approx_lat!=null&&p.approx_lon!=null&&p.search_radius_m!=null;
+let mapReady=false;
+if(showMap){
+ try{mapReady=await drawFlyerStreetMap(ctx,p,547,1306,487,288)}
+ catch(e){console.warn('No se pudo mostrar el minimapa',e)}
+}
+drawFlyerInfo(ctx,p,mapReady);
+if(mapReady){
+ ctx.fillStyle='rgba(19,76,55,.95)';flyerRoundedRect(ctx,562,1319,450,44,14);ctx.fill();
+ ctx.fillStyle='#f5d69a';ctx.font='700 23px system-ui,sans-serif';
+ const m=Number(p.search_radius_m);
+ ctx.fillText('ZONA APROXIMADA · '+(m>=1000?(m/1000)+' km':m+' m'),578,1350);
+}
+const phrase=p.status==='adoption'?'Ayudanos a encontrarle un hogar.':p.status==='lost'?'Ayudanos a encontrarlo y reunirlo con su familia.':'Ayudanos a encontrar a su familia.';
+ctx.fillStyle='#ffffff';ctx.font='600 32px system-ui,sans-serif';
+flyerTextLines(ctx,phrase,70,1664,930,36,1);
+ctx.fillStyle='#f5d69a';ctx.font='800 34px system-ui,sans-serif';ctx.fillText('huellitas-ar.vercel.app',72,1824);
+ctx.fillStyle='#cfe0d2';ctx.font='400 22px system-ui,sans-serif';ctx.fillText('Buscá esta mascota en Huellitas',72,1865);
+// QR individual existente: no cambia su destino.
+try{window.HuQR?.draw(ctx,petUrl(p),812,1690,205)}catch(e){console.warn('QR no disponible',e)}
 
 canvas.toBlob(async blob=>{if(!blob){toast('No pudimos guardar el flyer');return}const filename=`Huellitas_${p.name.replace(/[^a-z0-9_-]/gi,'_')}.png`;const file=new File([blob],filename,{type:'image/png'});if(navigator.canShare?.({files:[file]})&&navigator.share){try{await navigator.share({files:[file],title:`Huellitas · ${p.name}`,text:`${statusLabel[p.status]} en ${p.zone}`});return}catch(e){if(e.name==='AbortError')return}}const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);toast('Imagen generada. Podés usarla en Instagram.')},'image/png')}
 
